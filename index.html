@@ -5,33 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#4F46E5"> <!-- Updated theme color to match header -->
+    <meta name="theme-color" content="#4F46E5">
     <title>RasScanner Pro</title>
     
-    <!-- ========================================== -->
-    <!-- FOR OFFLINE APK: Keep these local script tags -->
     <script src="tailwindcss.js"></script>
     <script src="jspdf.min.js"></script>
-    <!-- ========================================== -->
-
-    <!-- FOR CANVAS PREVIEW ONLY (If local files are missing, uncomment these) -->
-    <!-- <script src="https://cdn.tailwindcss.com"></script> -->
-    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script> -->
-
+    
     <style>
         /* Mobile-first scrollbar hidden for clean UI */
         ::-webkit-scrollbar { display: none; }
         * { -webkit-tap-highlight-color: transparent; }
         
         /* Modals and Animations */
-        .bottom-sheet {
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            transform: translateY(100%);
-        }
-        .bottom-sheet.open {
-            transform: translateY(0);
-        }
-        
         .toast-enter { animation: slideUp 0.3s ease-out forwards; }
         .toast-exit { animation: fadeOut 0.3s ease-out forwards; }
         @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -40,117 +25,120 @@
         /* Toggle Button */
         .toggle-checkbox:checked { right: 0; border-color: #4F46E5; }
         .toggle-checkbox:checked + .toggle-label { background-color: #4F46E5; }
-
-        /* Navigation Tab Active State */
-        .nav-active { color: #4F46E5; font-weight: bold; }
-        .nav-inactive { color: #6B7280; }
     </style>
 </head>
 <body class="bg-slate-800 h-screen w-screen flex justify-center sm:items-center font-sans text-gray-800 overflow-hidden select-none">
 
-    <!-- Mobile App Container -->
     <div class="relative w-full h-full sm:max-w-[400px] sm:h-[800px] sm:max-h-[95vh] bg-white sm:rounded-[2.5rem] sm:shadow-2xl sm:border-[8px] sm:border-gray-900 flex flex-col overflow-hidden">
         
-        <!-- Top App Bar (Solid Color Header) -->
         <header class="bg-indigo-600 px-5 h-16 flex items-center justify-between shadow-md z-30 shrink-0">
             <div class="flex items-center gap-2 text-white">
                 <svg class="w-7 h-7 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><circle cx="10" cy="12" r="2"/><path d="m20 17-1.296-1.296a2.41 2.41 0 0 0-3.408 0L9 22"/></svg>
                 <span class="font-black text-xl tracking-tight text-white">Ras<span class="text-indigo-200">Scanner</span></span>
             </div>
-            <!-- Top Right Action (Dynamic) -->
             <button id="topActionBtn" onclick="clearAllImages()" class="hidden text-xs font-bold text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-full active:scale-95 transition-colors">
                 Clear Grid
             </button>
         </header>
 
-        <!-- ==================== VIEW 1: SCANNER ==================== -->
-        <!-- Added a beautiful soft gradient background here -->
-        <main id="viewScanner" class="flex-1 overflow-y-auto p-4 pb-36 relative block bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+        <main id="mainScrollView" class="flex-1 overflow-y-auto p-4 pb-20 relative block bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
             
-            <!-- Sticky Add More Action Bar (Visible only when images exist) -->
-            <div id="addMoreBar" class="hidden sticky top-0 z-10 bg-white/80 backdrop-blur-md p-2 rounded-2xl shadow-sm mb-4 border border-white/50 gap-2">
-                <button onclick="openCustomCamera()" class="flex-1 bg-indigo-50 text-indigo-700 font-bold py-2 rounded-xl flex items-center justify-center gap-1 active:scale-95 transition-transform text-sm border border-indigo-100">
-                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-                    Add Camera
+            <div class="flex gap-3 mb-5">
+                <button onclick="openCustomCamera()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-[0_4px_10px_rgba(79,70,229,0.3)] active:scale-95 transition-transform text-sm">
+                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                    Open Camera
                 </button>
-                <button onclick="document.getElementById('fileInput').click()" class="flex-1 bg-emerald-50 text-emerald-700 font-bold py-2 rounded-xl flex items-center justify-center gap-1 active:scale-95 transition-transform text-sm border border-emerald-100">
-                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/><circle cx="9" cy="9" r="2"/><path d="M16 5h6"/><path d="M19 2v6"/></svg>
+                <button onclick="document.getElementById('fileInput').click()" class="flex-1 bg-white hover:bg-gray-50 border-2 border-indigo-100 text-indigo-700 font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform text-sm">
+                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/><circle cx="9" cy="9" r="2"/><path d="M16 5h6"/><path d="M19 2v6"/></svg>
                     Add Gallery
                 </button>
             </div>
 
-            <!-- Image Grid -->
-            <div id="imageGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <!-- Empty State -->
-                <div id="emptyState" class="col-span-full flex flex-col items-center justify-center py-24 text-gray-500">
-                    <div class="w-24 h-24 bg-white/80 text-indigo-500 rounded-full flex items-center justify-center mb-5 shadow-lg border border-indigo-50 backdrop-blur-sm">
-                        <svg class="w-12 h-12" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+            <div class="bg-white p-4 rounded-2xl shadow-sm mb-5 border border-indigo-50">
+                <h3 class="font-black text-gray-800 mb-4 text-sm flex items-center gap-2 border-b border-gray-100 pb-2">
+                    <svg class="w-5 h-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg>
+                    PDF Generation Settings
+                </h3>
+                
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between bg-indigo-50/50 p-3 rounded-xl border border-indigo-100">
+                        <div>
+                            <label class="text-sm font-bold text-gray-800 flex items-center gap-2" for="autoCrop">
+                                <svg class="w-4 h-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg>
+                                Auto Crop Edge
+                            </label>
+                        </div>
+                        <div class="relative inline-block w-12 mr-2 align-middle select-none">
+                            <input type="checkbox" id="autoCrop" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-gray-300 appearance-none cursor-pointer transition-all duration-300 z-10" checked/>
+                            <label for="autoCrop" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-colors duration-300"></label>
+                        </div>
                     </div>
-                    <h3 class="font-black text-xl text-indigo-900">Ready to Scan</h3>
-                    <p class="text-sm mt-2 text-center px-6 font-medium text-indigo-900/60">Capture from camera or select documents from your gallery.</p>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1">Image Filter</label>
+                            <div class="relative">
+                                <select id="imageFilter" class="w-full appearance-none bg-gray-50 border border-gray-200 text-gray-900 text-xs font-bold rounded-xl focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 pr-8 outline-none">
+                                    <option value="none">Original</option>
+                                    <option value="magic" selected>Magic Color</option>
+                                    <option value="pure-bw">Pure B&W</option>
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1">Page Size</label>
+                            <div class="relative">
+                                <select id="pageSize" class="w-full appearance-none bg-gray-50 border border-gray-200 text-gray-900 text-xs font-bold rounded-xl focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 pr-8 outline-none">
+                                    <option value="fit" selected>Fit to Image</option>
+                                    <option value="a4">A4 Size</option>
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Main Big Action Buttons (Visible when empty) -->
-            <div id="mainActionBox" class="flex flex-col gap-4 mt-8 px-2">
-                <button onclick="openCustomCamera()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-3 shadow-[0_8px_20px_rgba(79,70,229,0.3)] active:scale-95 transition-transform">
-                    <svg class="w-7 h-7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-                    <span class="text-xl tracking-wide">Open Camera</span>
-                </button>
-                <button onclick="document.getElementById('fileInput').click()" class="w-full bg-white hover:bg-gray-50 border-2 border-indigo-100 text-indigo-700 font-black py-4 rounded-2xl flex items-center justify-center gap-3 shadow-sm active:scale-95 transition-transform">
-                    <svg class="w-7 h-7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/><circle cx="9" cy="9" r="2"/><path d="M16 5h6"/><path d="M19 2v6"/></svg>
-                    <span class="text-xl tracking-wide">Import from Gallery</span>
-                </button>
+            <div id="imageGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+                <div id="emptyState" class="col-span-full flex flex-col items-center justify-center py-16 text-gray-500 bg-white/60 rounded-2xl border-2 border-dashed border-gray-300">
+                    <div class="w-16 h-16 bg-white/80 text-indigo-400 rounded-full flex items-center justify-center mb-3 shadow-sm border border-indigo-50">
+                        <svg class="w-8 h-8" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                    </div>
+                    <h3 class="font-bold text-lg text-gray-700">No Images Selected</h3>
+                    <p class="text-xs mt-1 text-center font-medium text-gray-500">Capture from camera or select from gallery.</p>
+                </div>
             </div>
-        </main>
 
-        <!-- ==================== VIEW 2: HISTORY ==================== -->
-        <main id="viewHistory" class="flex-1 overflow-y-auto p-4 pb-24 relative hidden bg-gray-50/80">
-            <h2 class="text-xl font-bold text-gray-800 mb-4 px-1 flex items-center gap-2">
+            <button id="btnGeneratePDF" onclick="generatePDF()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black text-lg py-4 rounded-2xl flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(16,185,129,0.3)] active:scale-95 transition-transform hidden mb-8 border border-emerald-400">
+                <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
+                <span>SCAN NOW (CREATE PDF)</span>
+            </button>
+
+            <div class="w-full h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent my-8"></div>
+
+            <h2 class="text-xl font-black text-gray-800 mb-4 px-1 flex items-center gap-2">
                 <svg class="w-6 h-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M15 18a3 3 0 1 0-6 0"/><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M12 13v5"/></svg>
                 Saved Documents
             </h2>
-            <div id="historyList" class="flex flex-col gap-4">
-                <!-- Items populated via JS -->
-            </div>
             
-            <!-- Empty History State -->
-            <div id="emptyHistoryState" class="flex flex-col items-center justify-center py-20 text-gray-400 hidden">
-                <svg class="w-16 h-16 mb-4 text-gray-300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
-                <p class="font-medium text-gray-600">No PDFs generated yet.</p>
+            <div id="historyList" class="flex flex-col gap-4">
+                </div>
+            
+            <div id="emptyHistoryState" class="flex flex-col items-center justify-center py-12 text-gray-400 bg-white/50 rounded-2xl border border-gray-200 hidden">
+                <svg class="w-12 h-12 mb-3 text-gray-300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+                <p class="font-medium text-sm text-gray-500">No PDFs generated yet.</p>
             </div>
+
         </main>
 
-        <!-- Hidden File Inputs -->
         <input type="file" id="cameraInput" class="hidden" accept="image/*" capture="environment">
         <input type="file" id="fileInput" class="hidden" accept="image/*" multiple>
 
-        <!-- ==================== FIXED ACTION BAR (Settings & Scan Now) ==================== -->
-        <div id="floatingGenerateBar" class="absolute bottom-16 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-gray-200 z-20 hidden gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-            <!-- Settings Button -->
-            <button onclick="toggleSettings(true)" class="w-14 h-14 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center active:scale-95 transition-transform border border-indigo-200 shrink-0">
-                <svg class="w-7 h-7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-            </button>
-            <!-- Scan Now Button -->
-            <button onclick="generatePDF()" class="flex-1 bg-indigo-600 text-white font-black text-lg py-3 rounded-2xl flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(79,70,229,0.4)] active:scale-95 transition-transform border border-indigo-500">
-                <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>
-                <span>SCAN NOW</span>
-            </button>
-        </div>
-
-        <!-- ==================== BOTTOM NAVIGATION BAR ==================== -->
-        <nav class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 h-16 pb-safe flex z-30 shadow-[0_-10px_15px_rgba(0,0,0,0.03)]">
-            <button onclick="switchTab('scanner')" id="tabScanner" class="flex-1 flex flex-col items-center justify-center gap-1 nav-active transition-colors">
-                <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect width="10" height="8" x="7" y="8" rx="1"/></svg>
-                <span class="text-[10px] uppercase font-bold tracking-wider">Scanner</span>
-            </button>
-            <button onclick="switchTab('history')" id="tabHistory" class="flex-1 flex flex-col items-center justify-center gap-1 nav-inactive transition-colors">
-                <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
-                <span class="text-[10px] uppercase font-bold tracking-wider">History</span>
-            </button>
-        </nav>
-
-        <!-- ==================== LIVE CAMERA OVERLAY ==================== -->
         <div id="cameraOverlay" class="absolute inset-0 bg-black z-[60] hidden flex-col">
             <div class="h-16 bg-gradient-to-b from-black/80 to-transparent text-white flex items-center justify-between px-4 absolute top-0 left-0 right-0 z-10">
                 <button onclick="closeCustomCamera()" class="p-2 rounded-full bg-black/40 backdrop-blur-sm active:scale-95 transition-transform">
@@ -171,90 +159,24 @@
         </div>
         <canvas id="cameraCanvas" class="hidden"></canvas>
 
-
-        <!-- ==================== SETTINGS BOTTOM SHEET ==================== -->
-        <div id="settingsOverlay" onclick="toggleSettings()" class="absolute inset-0 bg-black/60 backdrop-blur-[2px] z-40 hidden transition-opacity opacity-0"></div>
-        
-        <div id="settingsSheet" class="bottom-sheet absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl z-50 p-6 pb-10 max-h-[85%] overflow-y-auto shadow-2xl">
-            <div class="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6"></div>
-            <h3 class="text-xl font-black text-gray-900 mb-6 flex items-center gap-2">
-                <svg class="w-6 h-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg>
-                PDF Generation Settings
-            </h3>
-
-            <div class="space-y-5">
-                <!-- Auto Crop Toggle -->
-                <div class="flex items-center justify-between bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100">
-                    <div>
-                        <label class="text-sm font-bold text-gray-800 flex items-center gap-2" for="autoCrop">
-                            <svg class="w-5 h-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg>
-                            Auto Crop Edge
-                        </label>
-                        <p class="text-[11px] text-gray-500 mt-1">Smart trim dark backgrounds</p>
-                    </div>
-                    <div class="relative inline-block w-12 mr-2 align-middle select-none">
-                        <input type="checkbox" id="autoCrop" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-gray-300 appearance-none cursor-pointer transition-all duration-300 z-10" checked/>
-                        <label for="autoCrop" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-colors duration-300"></label>
-                    </div>
-                </div>
-
-                <!-- Filter Option -->
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">Image Filter</label>
-                    <div class="relative">
-                        <select id="imageFilter" class="w-full appearance-none bg-white border-2 border-gray-200 text-gray-900 text-sm font-bold rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block p-3.5 pr-10 outline-none">
-                            <option value="none">Original (No Filter)</option>
-                            <option value="magic" selected>Magic Color (Auto Enhance)</option>
-                            <option value="pure-bw">Pure B&W (Document Style)</option>
-                        </select>
-                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
-                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Page Size Option -->
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">Page Size</label>
-                    <div class="relative">
-                        <select id="pageSize" class="w-full appearance-none bg-white border-2 border-gray-200 text-gray-900 text-sm font-bold rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block p-3.5 pr-10 outline-none">
-                            <option value="fit" selected>Fit to Image (Best Quality)</option>
-                            <option value="a4">A4 Size Document</option>
-                        </select>
-                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
-                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                        </div>
-                    </div>
-                </div>
-                
-                <button onclick="generatePDF()" class="w-full bg-indigo-600 text-white font-bold text-lg py-4 rounded-2xl mt-4 shadow-[0_8px_20px_rgba(79,70,229,0.3)] active:scale-95 transition-transform flex items-center justify-center gap-2">
-                    <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
-                    Save PDF
-                </button>
-            </div>
-        </div>
-
-        <!-- ==================== PDF PREVIEW MODAL ==================== -->
-        <div id="pdfPreviewModal" class="absolute inset-0 bg-white z-50 hidden flex-col">
+        <div id="pdfPreviewModal" class="absolute inset-0 bg-white z-[70] hidden flex-col">
             <header class="bg-indigo-600 px-4 h-14 flex items-center justify-between shadow-md shrink-0 text-white">
                 <button onclick="closePdfPreview()" class="p-2 rounded-full hover:bg-indigo-700 transition-colors">
                     <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
                 </button>
                 <span class="font-bold text-sm truncate max-w-[200px]" id="previewTitle">Document Preview</span>
-                <div class="w-10"></div> <!-- spacer -->
+                <div class="w-10"></div>
             </header>
             <div class="flex-1 bg-gray-200 w-full relative">
                 <iframe id="pdfIframe" class="w-full h-full border-none absolute inset-0"></iframe>
             </div>
         </div>
 
-        <!-- ==================== LOADING OVERLAY ==================== -->
         <div id="loadingOverlay" class="absolute inset-0 bg-white/95 backdrop-blur-md z-[100] hidden flex-col items-center justify-center p-6">
             <svg class="w-16 h-16 text-indigo-600 animate-spin mb-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
             <h3 class="text-2xl font-black text-gray-900 mb-2">Creating Magic...</h3>
-            <p class="text-sm text-gray-500 text-center mb-8 font-medium">Please wait, your PDF is being compiled and saved safely in the app.</p>
+            <p class="text-sm text-gray-500 text-center mb-8 font-medium">Please wait, your PDF is being compiled and saved safely.</p>
             
-            <!-- Progress Bar -->
             <div class="w-full max-w-xs bg-gray-200 rounded-full h-4 mb-2 overflow-hidden shadow-inner">
                 <div id="progressBar" class="bg-indigo-600 h-4 rounded-full transition-all duration-300 ease-out" style="width: 0%"></div>
             </div>
@@ -264,10 +186,9 @@
             </div>
         </div>
 
-        <!-- Mobile Toast System -->
         <div id="toastContainer" class="absolute top-4 left-4 right-4 z-[110] flex flex-col gap-2 pointer-events-none"></div>
 
-    </div> <!-- End of Mobile App Container -->
+    </div>
 
     <script>
         // ==========================================
@@ -308,67 +229,12 @@
         const cameraInput = document.getElementById('cameraInput');
         const imageGrid = document.getElementById('imageGrid');
         const emptyState = document.getElementById('emptyState');
-        const imageCount = document.getElementById('imageCount');
         const topActionBtn = document.getElementById('topActionBtn');
-        const mainActionBox = document.getElementById('mainActionBox');
-        const addMoreBar = document.getElementById('addMoreBar');
-        const floatingGenerateBar = document.getElementById('floatingGenerateBar');
+        const btnGeneratePDF = document.getElementById('btnGeneratePDF');
         const loadingOverlay = document.getElementById('loadingOverlay');
 
-        function switchTab(tab) {
-            const viewScanner = document.getElementById('viewScanner');
-            const viewHistory = document.getElementById('viewHistory');
-            const tabScanner = document.getElementById('tabScanner');
-            const tabHistory = document.getElementById('tabHistory');
-            const generateBar = document.getElementById('floatingGenerateBar');
-
-            if (tab === 'scanner') {
-                viewScanner.classList.remove('hidden');
-                viewHistory.classList.add('hidden');
-                tabScanner.className = "flex-1 flex flex-col items-center justify-center gap-1 nav-active transition-colors";
-                tabHistory.className = "flex-1 flex flex-col items-center justify-center gap-1 nav-inactive transition-colors";
-                // Show floating bar if there are images
-                if(imagesArray.length > 0) {
-                    generateBar.classList.remove('hidden');
-                    generateBar.classList.add('flex');
-                }
-            } else {
-                viewScanner.classList.add('hidden');
-                viewHistory.classList.remove('hidden');
-                tabHistory.className = "flex-1 flex flex-col items-center justify-center gap-1 nav-active transition-colors";
-                tabScanner.className = "flex-1 flex flex-col items-center justify-center gap-1 nav-inactive transition-colors";
-                // Always hide floating generate bar in History tab
-                generateBar.classList.add('hidden');
-                generateBar.classList.remove('flex');
-                loadHistoryFiles(); 
-            }
-        }
-
-        const settingsSheet = document.getElementById('settingsSheet');
-        const settingsOverlay = document.getElementById('settingsOverlay');
-        let isSettingsOpen = false;
-
-        function toggleSettings(forceOpen = null) {
-            if (forceOpen !== null) isSettingsOpen = !forceOpen;
-            
-            isSettingsOpen = !isSettingsOpen;
-            if (isSettingsOpen) {
-                settingsOverlay.classList.remove('hidden');
-                setTimeout(() => {
-                    settingsOverlay.classList.remove('opacity-0');
-                    settingsSheet.classList.add('open');
-                }, 10);
-            } else {
-                settingsOverlay.classList.add('opacity-0');
-                settingsSheet.classList.remove('open');
-                setTimeout(() => {
-                    settingsOverlay.classList.add('hidden');
-                }, 300);
-            }
-        }
-
         // ==========================================
-        // LIVE CAMERA MODULE (Laptop & Mobile WebRTC)
+        // LIVE CAMERA MODULE
         // ==========================================
         let currentStream = null;
         let useFrontCamera = false;
@@ -385,6 +251,7 @@
                 document.getElementById('cameraOverlay').classList.add('flex');
             } catch (err) {
                 console.warn("Live camera blocked/not supported. Using fallback.", err);
+                // Fallback for WebView/Browsers without WebRTC support
                 document.getElementById('cameraInput').click();
             }
         }
@@ -423,12 +290,9 @@
             renderImages();
             updateUI();
             showToast("Photo captured successfully!", "success");
-            
-            // Note: Auto open settings is disabled based on user feedback. 
-            // User wants to see the grid and have the Scan Now / Settings button directly visible.
         }
 
-
+        // Handle File Selections
         fileInput.addEventListener('change', (e) => { 
             processFiles(e.target.files); 
             fileInput.value = ''; 
@@ -467,7 +331,7 @@
         function renderImages() {
             imageGrid.innerHTML = '';
             if (imagesArray.length === 0) { 
-                return; // Handled by updateUI
+                return; 
             }
 
             imagesArray.forEach((imgObj, index) => {
@@ -485,9 +349,6 @@
                 `;
                 imageGrid.appendChild(item);
             });
-            
-            const mainScroll = document.getElementById('viewScanner');
-            mainScroll.scrollTop = mainScroll.scrollHeight;
         }
 
         function removeImage(id) { 
@@ -506,42 +367,23 @@
         }
         
         function updateUI() {
-            imageCount.textContent = imagesArray.length;
-            
-            // Explicitly handling classes to avoid overlapping issues
             if (imagesArray.length > 0) { 
                 topActionBtn.classList.remove('hidden'); 
-                
-                addMoreBar.classList.remove('hidden');
-                addMoreBar.classList.add('flex');
-                
-                floatingGenerateBar.classList.remove('hidden');
-                floatingGenerateBar.classList.add('flex');
-                
-                mainActionBox.classList.add('hidden');
-                mainActionBox.classList.remove('flex');
-                
                 emptyState.classList.add('hidden');
                 emptyState.classList.remove('flex');
+                btnGeneratePDF.classList.remove('hidden');
+                btnGeneratePDF.classList.add('flex');
             } else { 
                 topActionBtn.classList.add('hidden'); 
-                
-                addMoreBar.classList.add('hidden');
-                addMoreBar.classList.remove('flex');
-                
-                floatingGenerateBar.classList.add('hidden');
-                floatingGenerateBar.classList.remove('flex');
-                
-                mainActionBox.classList.remove('hidden');
-                mainActionBox.classList.add('flex');
-                
                 emptyState.classList.remove('hidden');
                 emptyState.classList.add('flex');
+                btnGeneratePDF.classList.add('hidden');
+                btnGeneratePDF.classList.remove('flex');
             }
         }
 
         // ==========================================
-        // ADVANCED IMAGE PROCESSING
+        // ADVANCED IMAGE PROCESSING & AUTOCROP (From Original Code)
         // ==========================================
         async function processDocumentImage(dataUrl, filterType, applyAutoCrop) {
             return new Promise((resolve) => {
@@ -671,8 +513,6 @@
         async function generatePDF() {
             if (imagesArray.length === 0) return;
 
-            toggleSettings(false); 
-            
             loadingOverlay.classList.remove('hidden');
             loadingOverlay.classList.add('flex');
             
@@ -769,16 +609,20 @@
                 store.put(newRecord);
                 
                 transaction.oncomplete = () => {
-                    showToast('Saved securely to App Cache!', 'success');
+                    showToast('Saved successfully to History!', 'success');
                     imagesArray = [];
                     renderImages();
                     updateUI();
-                    switchTab('history');
+                    loadHistoryFiles();
+                    
+                    // Scroll to history
+                    const mainScroll = document.getElementById('mainScrollView');
+                    mainScroll.scrollTo({ top: mainScroll.scrollHeight, behavior: 'smooth' });
                 };
 
                 transaction.onerror = (e) => {
                     console.error("Error saving PDF:", e);
-                    showToast('Failed to save to cache.', 'error');
+                    showToast('Failed to save to database.', 'error');
                 };
 
             } catch (error) {
@@ -811,11 +655,13 @@
 
                 if(files.length === 0) {
                     emptyHistoryState.classList.remove('hidden');
+                    emptyHistoryState.classList.add('flex');
                 } else {
                     emptyHistoryState.classList.add('hidden');
+                    emptyHistoryState.classList.remove('flex');
                     files.forEach(file => {
                         const item = document.createElement('div');
-                        item.className = 'bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-3';
+                        item.className = 'bg-white p-4 rounded-2xl shadow-sm border border-indigo-50 flex flex-col gap-3';
                         item.innerHTML = `
                             <div class="flex items-center gap-4 cursor-pointer" onclick="viewPDF('${file.id}')">
                                 <div class="w-14 h-16 bg-gray-200 rounded-lg overflow-hidden shrink-0 shadow-sm border border-gray-200">
@@ -828,7 +674,6 @@
                                 </div>
                             </div>
                             
-                            <!-- Document Actions Grid -->
                             <div class="grid grid-cols-5 gap-2 pt-2 border-t border-gray-50">
                                 <button onclick="viewPDF('${file.id}')" title="View" class="col-span-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 rounded-xl flex items-center justify-center transition-colors">
                                     <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -853,7 +698,6 @@
             };
         }
 
-        // RENAME PDF
         function renamePDF(id, currentName) {
             let baseName = currentName.endsWith('.pdf') ? currentName.slice(0, -4) : currentName;
             let newName = prompt("Enter new name for the document:", baseName);
@@ -877,7 +721,6 @@
             }
         }
 
-        // SHARE PDF (NATIVE WEB SHARE API)
         async function sharePDF(id, filename) {
             const transaction = db.transaction(["pdfs"], "readonly");
             const store = transaction.objectStore("pdfs");
@@ -922,7 +765,7 @@
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
-                    showToast('Saved to Download folder', 'success');
+                    // No toast needed here as Android Webview will trigger native download toast
                 }
             };
         }
