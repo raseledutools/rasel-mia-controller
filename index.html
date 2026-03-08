@@ -133,7 +133,7 @@
         </main>
 
         <input type="file" id="cameraInput" class="hidden" accept="image/*" capture="environment">
-        <input type="file" id="fileInput" class="hidden" accept="image/*" multiple>
+        <input type="file" id="fileInput" class="hidden" accept="image/jpeg, image/png, image/webp, image/jpg, image/*" multiple="multiple">
 
         <div id="cameraOverlay" class="absolute inset-0 bg-black z-[60] hidden flex-col">
             <div class="h-16 bg-gradient-to-b from-black/80 to-transparent text-white flex items-center justify-between px-4 absolute top-0 left-0 right-0 z-10">
@@ -167,8 +167,8 @@
 
         <div id="loadingOverlay" class="absolute inset-0 bg-white/95 backdrop-blur-md z-[100] hidden flex-col items-center justify-center p-6">
             <svg class="w-16 h-16 text-indigo-600 animate-spin mb-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-            <h3 class="text-2xl font-black text-gray-900 mb-2">Creating Magic...</h3>
-            <p class="text-sm text-gray-500 text-center mb-8 font-medium">Please wait, enhancing resolution and saving safely.</p>
+            <h3 id="loadingTitle" class="text-2xl font-black text-gray-900 mb-2">Creating Magic...</h3>
+            <p id="loadingDesc" class="text-sm text-gray-500 text-center mb-8 font-medium">Please wait, enhancing resolution and saving safely.</p>
             
             <div class="w-full max-w-xs bg-gray-200 rounded-full h-4 mb-2 overflow-hidden shadow-inner">
                 <div id="progressBar" class="bg-indigo-600 h-4 rounded-full transition-all duration-300 ease-out" style="width: 0%"></div>
@@ -183,7 +183,7 @@
     </div>
 
     <script>
-        // Configure PDF.js Worker
+        // Configure PDF.js Worker for viewing PDF inside APK
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
         // ==========================================
@@ -194,18 +194,13 @@
         
         function initDB() {
             const request = indexedDB.open(dbName, 1);
-            
-            request.onerror = (e) => {
-                showToast("Storage error", "error");
-            };
-            
+            request.onerror = (e) => showToast("Storage error", "error");
             request.onupgradeneeded = (e) => {
                 db = e.target.result;
                 if (!db.objectStoreNames.contains("pdfs")) {
                     db.createObjectStore("pdfs", { keyPath: "id" });
                 }
             };
-            
             request.onsuccess = (e) => {
                 db = e.target.result;
                 loadHistoryFiles();
@@ -240,14 +235,12 @@
                 document.getElementById('cameraOverlay').classList.remove('hidden');
                 document.getElementById('cameraOverlay').classList.add('flex');
             } catch (err) {
-                document.getElementById('cameraInput').click(); // Fallback for APK
+                document.getElementById('cameraInput').click(); // Fallback for APK WebView
             }
         }
 
         function closeCustomCamera() {
-            if(currentStream) {
-                currentStream.getTracks().forEach(track => track.stop());
-            }
+            if(currentStream) currentStream.getTracks().forEach(track => track.stop());
             document.getElementById('cameraOverlay').classList.add('hidden');
             document.getElementById('cameraOverlay').classList.remove('flex');
         }
@@ -265,11 +258,7 @@
             canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
             
-            imagesArray.push({ 
-                id: Math.random().toString(36).substr(2, 9), 
-                file: null, 
-                dataUrl: canvas.toDataURL('image/jpeg', 0.9) 
-            });
+            imagesArray.push({ id: Math.random().toString(36).substr(2, 9), file: null, dataUrl: canvas.toDataURL('image/jpeg', 0.9) });
             
             closeCustomCamera(); 
             renderImages(); 
@@ -278,7 +267,7 @@
         }
 
         // ==========================================
-        // FILE SELECTION (BUG FIXED & SEQUENCE MAINTAINED)
+        // FILE SELECTION (BUG FIXED FOR FILE MANAGER & MULTIPLE)
         // ==========================================
         fileInput.addEventListener('change', (e) => { 
             processFiles(e.target.files); 
@@ -291,19 +280,27 @@
         }, false);
 
         async function processFiles(files) {
-            const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
-            let newImagesCount = 0;
+            if (!files || files.length === 0) return;
             
-            // Convert FileList to Array to process them sequentially
+            let newImagesCount = 0;
             const filesArray = Array.from(files);
 
-            for (let i = 0; i < filesArray.length; i++) {
-                const file = filesArray[i];
-                if (validTypes.includes(file.type)) {
-                    try {
+            // Show loading overlay so app doesn't freeze on multiple large images
+            loadingOverlay.classList.remove('hidden');
+            loadingOverlay.classList.add('flex');
+            document.getElementById('loadingTitle').innerText = "Loading Images...";
+            document.getElementById('loadingDesc').innerText = "Please wait, reading files from storage.";
+
+            try {
+                // Read files sequentially to avoid memory crash in WebView
+                for (let i = 0; i < filesArray.length; i++) {
+                    const file = filesArray[i];
+                    
+                    // Simple check allows mostly any image type from File Manager
+                    if (file.type.match('image.*') || file.name.match(/\.(jpg|jpeg|png|webp)$/i)) {
                         const dataUrl = await new Promise((resolve, reject) => {
                             const reader = new FileReader();
-                            reader.onload = () => resolve(reader.result);
+                            reader.onload = (event) => resolve(event.target.result);
                             reader.onerror = (error) => reject(error);
                             reader.readAsDataURL(file);
                         });
@@ -314,15 +311,26 @@
                             dataUrl: dataUrl 
                         });
                         newImagesCount++;
-                        renderImages(); 
-                        updateUI();
-                    } catch (error) {
-                        console.error("Error processing file:", error);
                     }
                 }
-            }
-            if (newImagesCount > 0) {
-                showToast(`${newImagesCount} image(s) loaded in order`, 'success');
+
+                if (newImagesCount > 0) {
+                    renderImages(); 
+                    updateUI();
+                    showToast(`${newImagesCount} image(s) loaded successfully`, 'success');
+                } else {
+                    showToast('No valid images found.', 'error');
+                }
+            } catch (error) {
+                console.error("Error reading files:", error);
+                showToast('Failed to load some images', 'error');
+            } finally {
+                loadingOverlay.classList.add('hidden');
+                loadingOverlay.classList.remove('flex');
+                
+                // Reset loading text for PDF Generation later
+                document.getElementById('loadingTitle').innerText = "Creating Magic...";
+                document.getElementById('loadingDesc').innerText = "Please wait, enhancing resolution and saving safely.";
             }
         }
 
@@ -342,38 +350,23 @@
             });
         }
 
-        function removeImage(id) { 
-            imagesArray = imagesArray.filter(img => img.id !== id); 
-            renderImages(); 
-            updateUI(); 
-        }
-        
-        function clearAllImages() { 
-            if(confirm('Clear the grid?')) { 
-                imagesArray = []; 
-                renderImages(); 
-                updateUI(); 
-            } 
-        }
+        function removeImage(id) { imagesArray = imagesArray.filter(img => img.id !== id); renderImages(); updateUI(); }
+        function clearAllImages() { if(confirm('Clear the grid?')) { imagesArray = []; renderImages(); updateUI(); } }
         
         function updateUI() {
             if (imagesArray.length > 0) { 
                 topActionBtn.classList.remove('hidden'); 
-                emptyState.classList.add('hidden'); 
-                emptyState.classList.remove('flex');
-                btnGeneratePDF.classList.remove('hidden'); 
-                btnGeneratePDF.classList.add('flex');
+                emptyState.classList.add('hidden'); emptyState.classList.remove('flex');
+                btnGeneratePDF.classList.remove('hidden'); btnGeneratePDF.classList.add('flex');
             } else { 
                 topActionBtn.classList.add('hidden'); 
-                emptyState.classList.remove('hidden'); 
-                emptyState.classList.add('flex');
-                btnGeneratePDF.classList.add('hidden'); 
-                btnGeneratePDF.classList.remove('flex');
+                emptyState.classList.remove('hidden'); emptyState.classList.add('flex');
+                btnGeneratePDF.classList.add('hidden'); btnGeneratePDF.classList.remove('flex');
             }
         }
 
         // ==========================================
-        // SMART CROP & HD RESOLUTION INCREASE
+        // SMART CROP & HD RESOLUTION (Magic Color)
         // ==========================================
         async function processDocumentImage(dataUrl, filterType, applyAutoCrop) {
             return new Promise((resolve) => {
@@ -382,10 +375,9 @@
                     let canvas = document.createElement('canvas');
                     let ctx = canvas.getContext('2d', { willReadFrequently: true });
                     
-                    // INCREASING RESOLUTION FOR MAGIC COLOR
                     let scaleMultiplier = 1;
                     if (filterType === 'magic') {
-                        scaleMultiplier = 2; // Doubles the internal resolution pixels
+                        scaleMultiplier = 2; // HD Resolution Up-scaling
                     }
 
                     canvas.width = img.width * scaleMultiplier; 
@@ -394,7 +386,6 @@
                     ctx.fillStyle = '#ffffff'; 
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                    // Smooth rendering for upscale
                     ctx.imageSmoothingEnabled = true;
                     ctx.imageSmoothingQuality = 'high';
 
@@ -417,12 +408,10 @@
                         ctx.putImageData(imageData, 0, 0);
                     }
                         
-                    // INTELLIGENT AUTO CROP
                     if (applyAutoCrop) {
                         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                         const data = imgData.data;
-                        const w = canvas.width; 
-                        const h = canvas.height;
+                        const w = canvas.width; const h = canvas.height;
                         
                         let minX = 0, minY = 0, maxX = w - 1, maxY = h - 1;
 
@@ -430,8 +419,7 @@
                             let darkCount = 0, total = 0;
                             for (let x = startX; x <= endX; x += 3) {
                                 let i = (y * w + x) * 4;
-                                if (data[i] < 128) darkCount++;
-                                total++;
+                                if (data[i] < 128) darkCount++; total++;
                             }
                             return total > 0 ? darkCount / total : 0;
                         };
@@ -440,8 +428,7 @@
                             let darkCount = 0, total = 0;
                             for (let y = startY; y <= endY; y += 3) {
                                 let i = (y * w + x) * 4;
-                                if (data[i] < 128) darkCount++;
-                                total++;
+                                if (data[i] < 128) darkCount++; total++;
                             }
                             return total > 0 ? darkCount / total : 0;
                         };
@@ -454,41 +441,31 @@
                         let consec = 0;
                         for (let x = 0; x < w * 0.3; x++) {
                             if (getDarkRatioCol(x, 0, h - 1) > BORDER_THRESHOLD) { minX = x; consec = 0; }
-                            else if (getDarkRatioCol(x, 0, h - 1) < PAPER_THRESHOLD) {
-                                consec++; if (consec > reqConsecutiveW) break;
-                            }
+                            else if (getDarkRatioCol(x, 0, h - 1) < PAPER_THRESHOLD) { consec++; if (consec > reqConsecutiveW) break; }
                         }
                         consec = 0;
                         for (let x = w - 1; x > w * 0.7; x--) {
                             if (getDarkRatioCol(x, 0, h - 1) > BORDER_THRESHOLD) { maxX = x; consec = 0; }
-                            else if (getDarkRatioCol(x, 0, h - 1) < PAPER_THRESHOLD) {
-                                consec++; if (consec > reqConsecutiveW) break;
-                            }
+                            else if (getDarkRatioCol(x, 0, h - 1) < PAPER_THRESHOLD) { consec++; if (consec > reqConsecutiveW) break; }
                         }
                         consec = 0;
                         for (let y = 0; y < h * 0.3; y++) {
                             if (getDarkRatioRow(y, minX, maxX) > BORDER_THRESHOLD) { minY = y; consec = 0; }
-                            else if (getDarkRatioRow(y, minX, maxX) < PAPER_THRESHOLD) {
-                                consec++; if (consec > reqConsecutiveH) break;
-                            }
+                            else if (getDarkRatioRow(y, minX, maxX) < PAPER_THRESHOLD) { consec++; if (consec > reqConsecutiveH) break; }
                         }
                         consec = 0;
                         for (let y = h - 1; y > h * 0.7; y--) {
                             if (getDarkRatioRow(y, minX, maxX) > BORDER_THRESHOLD) { maxY = y; consec = 0; }
-                            else if (getDarkRatioRow(y, minX, maxX) < PAPER_THRESHOLD) {
-                                consec++; if (consec > reqConsecutiveH) break;
-                            }
+                            else if (getDarkRatioRow(y, minX, maxX) < PAPER_THRESHOLD) { consec++; if (consec > reqConsecutiveH) break; }
                         }
 
-                        const safetyTrimX = Math.floor(w * 0.015);
-                        const safetyTrimY = Math.floor(h * 0.015);
+                        const safetyTrimX = Math.floor(w * 0.015); const safetyTrimY = Math.floor(h * 0.015);
                         minX = Math.min(minX + safetyTrimX, Math.floor(w * 0.4));
                         minY = Math.min(minY + safetyTrimY, Math.floor(h * 0.4));
                         maxX = Math.max(maxX - safetyTrimX, Math.floor(w * 0.6));
                         maxY = Math.max(maxY - safetyTrimY, Math.floor(h * 0.6));
 
-                        const cropWidth = maxX - minX;
-                        const cropHeight = maxY - minY;
+                        const cropWidth = maxX - minX; const cropHeight = maxY - minY;
 
                         if (cropWidth > 0 && cropHeight > 0) {
                             const margin = Math.floor(Math.max(cropWidth, cropHeight) * 0.04);
@@ -496,20 +473,19 @@
                             croppedCanvas.width = cropWidth + (margin * 2); 
                             croppedCanvas.height = cropHeight + (margin * 2);
                             let cropCtx = croppedCanvas.getContext('2d');
-                            cropCtx.fillStyle = '#ffffff'; 
-                            cropCtx.fillRect(0, 0, croppedCanvas.width, croppedCanvas.height);
+                            cropCtx.fillStyle = '#ffffff'; cropCtx.fillRect(0, 0, croppedCanvas.width, croppedCanvas.height);
                             cropCtx.drawImage(canvas, minX, minY, cropWidth, cropHeight, margin, margin, cropWidth, cropHeight);
                             canvas = croppedCanvas;
                         }
                     }
-                    resolve(canvas.toDataURL('image/jpeg', 0.95)); // Max Quality
+                    resolve(canvas.toDataURL('image/jpeg', 0.95)); 
                 };
                 img.src = dataUrl;
             });
         }
 
         // ==========================================
-        // GENERATE PDF
+        // GENERATE PDF (300 DPI)
         // ==========================================
         async function generatePDF() {
             if (imagesArray.length === 0) return;
@@ -521,8 +497,7 @@
             const progressTextPercent = document.getElementById('progressTextPercent');
             const progressTextItem = document.getElementById('progressTextItem');
             
-            progressBar.style.width = '0%'; 
-            progressTextPercent.innerText = '0%';
+            progressBar.style.width = '0%'; progressTextPercent.innerText = '0%';
             progressTextItem.innerText = `0 / ${imagesArray.length}`;
 
             await new Promise(r => setTimeout(r, 50)); 
@@ -533,21 +508,17 @@
                 const filterType = document.getElementById('imageFilter').value;
                 const doAutoCrop = document.getElementById('autoCrop').checked;
                 
-                let doc = null; 
-                const totalImages = imagesArray.length; 
-                let firstPageThumb = null;
+                let doc = null; const totalImages = imagesArray.length; let firstPageThumb = null;
 
                 for (let i = 0; i < totalImages; i++) {
                     const processedDataUrl = await processDocumentImage(imagesArray[i].dataUrl, filterType, doAutoCrop);
                     if(i === 0) firstPageThumb = processedDataUrl;
 
-                    const img = new Image(); 
-                    img.src = processedDataUrl;
+                    const img = new Image(); img.src = processedDataUrl;
                     await new Promise(resolve => img.onload = resolve);
 
                     const pxToMm = 0.264583;
-                    let imgWidthMm = img.width * pxToMm; 
-                    let imgHeightMm = img.height * pxToMm;
+                    let imgWidthMm = img.width * pxToMm; let imgHeightMm = img.height * pxToMm;
                     let orientation = imgWidthMm > imgHeightMm ? 'landscape' : 'portrait';
 
                     if (layoutType === 'fit') {
@@ -559,28 +530,20 @@
                         if (i === 0) doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: format, dpi: 300 }); 
                         else doc.addPage(format, 'portrait');
 
-                        let pdfPageWidth = doc.internal.pageSize.getWidth(); 
-                        let pdfPageHeight = doc.internal.pageSize.getHeight();
-                        
-                        let imgRatio = img.width / img.height; 
-                        let pageRatio = pdfPageWidth / pdfPageHeight;
-                        let finalWidth = pdfPageWidth; 
-                        let finalHeight = pdfPageHeight;
+                        let pdfPageWidth = doc.internal.pageSize.getWidth(); let pdfPageHeight = doc.internal.pageSize.getHeight();
+                        let imgRatio = img.width / img.height; let pageRatio = pdfPageWidth / pdfPageHeight;
+                        let finalWidth = pdfPageWidth; let finalHeight = pdfPageHeight;
 
                         if (imgRatio > pageRatio) finalHeight = pdfPageWidth / imgRatio;
                         else finalWidth = pdfPageHeight * imgRatio;
 
-                        let finalX = (pdfPageWidth - finalWidth) / 2; 
-                        let finalY = (pdfPageHeight - finalHeight) / 2;
-                        
+                        let finalX = (pdfPageWidth - finalWidth) / 2; let finalY = (pdfPageHeight - finalHeight) / 2;
                         doc.addImage(processedDataUrl, 'JPEG', finalX, finalY, finalWidth, finalHeight, undefined, 'FAST');
                     }
 
                     let currentPercent = Math.round(((i + 1) / totalImages) * 100);
-                    progressBar.style.width = `${currentPercent}%`; 
-                    progressTextPercent.innerText = `${currentPercent}%`;
+                    progressBar.style.width = `${currentPercent}%`; progressTextPercent.innerText = `${currentPercent}%`;
                     progressTextItem.innerText = `${i + 1} / ${totalImages}`;
-                    
                     await new Promise(r => setTimeout(r, 10)); 
                 }
 
@@ -589,12 +552,8 @@
                 const fileName = `RasScanner_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}_${d.getHours()}${d.getMinutes()}.pdf`;
 
                 const newRecord = {
-                    id: "doc_" + Date.now(), 
-                    name: fileName, 
-                    date: d.toLocaleString(),
-                    pageCount: totalImages, 
-                    thumb: firstPageThumb, 
-                    pdfData: pdfDataUri
+                    id: "doc_" + Date.now(), name: fileName, date: d.toLocaleString(),
+                    pageCount: totalImages, thumb: firstPageThumb, pdfData: pdfDataUri
                 };
 
                 const transaction = db.transaction(["pdfs"], "readwrite");
@@ -602,23 +561,14 @@
                 
                 transaction.oncomplete = () => {
                     showToast('Saved successfully to History!', 'success');
-                    imagesArray = []; 
-                    renderImages(); 
-                    updateUI(); 
-                    loadHistoryFiles();
-                    
+                    imagesArray = []; renderImages(); updateUI(); loadHistoryFiles();
                     const mainScroll = document.getElementById('mainScrollView');
                     mainScroll.scrollTo({ top: mainScroll.scrollHeight, behavior: 'smooth' });
                 };
             } catch (error) { 
                 showToast('Error generating PDF', 'error'); 
-                console.error(error);
-            } 
-            finally {
-                setTimeout(() => { 
-                    loadingOverlay.classList.add('hidden'); 
-                    loadingOverlay.classList.remove('flex'); 
-                }, 500);
+            } finally {
+                setTimeout(() => { loadingOverlay.classList.add('hidden'); loadingOverlay.classList.remove('flex'); }, 500);
             }
         }
 
@@ -635,20 +585,16 @@
                 historyList.innerHTML = '';
 
                 if(files.length === 0) {
-                    emptyHistoryState.classList.remove('hidden'); 
-                    emptyHistoryState.classList.add('flex');
+                    emptyHistoryState.classList.remove('hidden'); emptyHistoryState.classList.add('flex');
                 } else {
-                    emptyHistoryState.classList.add('hidden'); 
-                    emptyHistoryState.classList.remove('flex');
+                    emptyHistoryState.classList.add('hidden'); emptyHistoryState.classList.remove('flex');
                     
                     files.forEach(file => {
                         const item = document.createElement('div');
                         item.className = 'bg-white p-4 rounded-2xl shadow-sm border border-indigo-50 flex flex-col gap-3';
                         item.innerHTML = `
                             <div class="flex items-center gap-4 cursor-pointer" onclick="viewPDF('${file.id}')">
-                                <div class="w-14 h-16 bg-gray-200 rounded-lg overflow-hidden shrink-0 shadow-sm border border-gray-200">
-                                    <img src="${file.thumb}" class="w-full h-full object-cover">
-                                </div>
+                                <div class="w-14 h-16 bg-gray-200 rounded-lg overflow-hidden shrink-0 shadow-sm border border-gray-200"><img src="${file.thumb}" class="w-full h-full object-cover"></div>
                                 <div class="flex-1 min-w-0">
                                     <h4 class="font-bold text-gray-800 text-sm truncate">${file.name}</h4>
                                     <p class="text-xs text-gray-500 mt-0.5">${file.date}</p>
@@ -669,6 +615,7 @@
             };
         }
 
+        // PDF.JS VIEWER (Prevents APK crashes when viewing)
         function viewPDF(id) {
             db.transaction(["pdfs"], "readonly").objectStore("pdfs").get(id).onsuccess = (e) => {
                 const file = e.target.result;
@@ -684,9 +631,7 @@
                         const base64Data = file.pdfData.split(',')[1];
                         const pdfData = atob(base64Data);
                         const uint8Array = new Uint8Array(pdfData.length);
-                        for (let i = 0; i < pdfData.length; i++) {
-                            uint8Array[i] = pdfData.charCodeAt(i);
-                        }
+                        for (let i = 0; i < pdfData.length; i++) { uint8Array[i] = pdfData.charCodeAt(i); }
 
                         pdfjsLib.getDocument({data: uint8Array}).promise.then(pdf => {
                             container.innerHTML = ''; 
@@ -695,8 +640,7 @@
                                     const viewport = page.getViewport({scale: 1.5}); 
                                     const canvas = document.createElement('canvas');
                                     const context = canvas.getContext('2d');
-                                    canvas.height = viewport.height;
-                                    canvas.width = viewport.width;
+                                    canvas.height = viewport.height; canvas.width = viewport.width;
                                     canvas.className = 'w-full max-w-lg h-auto shadow-md mb-3 bg-white';
                                     container.appendChild(canvas);
                                     page.render({canvasContext: context, viewport: viewport});
@@ -705,9 +649,7 @@
                         }).catch(err => {
                             container.innerHTML = '<div class="text-red-500 mt-10">Failed to render PDF preview.</div>';
                         });
-                    } catch (err) {
-                        container.innerHTML = '<div class="text-red-500 mt-10">Failed to read PDF data.</div>';
-                    }
+                    } catch (err) { container.innerHTML = '<div class="text-red-500 mt-10">Failed to read PDF data.</div>'; }
                 }
             };
         }
@@ -725,42 +667,28 @@
                 if(!newName.toLowerCase().endsWith('.pdf')) newName += '.pdf';
                 const store = db.transaction(["pdfs"], "readwrite").objectStore("pdfs");
                 store.get(id).onsuccess = (e) => {
-                    const data = e.target.result; 
-                    data.name = newName;
-                    store.put(data).onsuccess = () => { 
-                        loadHistoryFiles(); 
-                        showToast('Document renamed', 'success'); 
-                    };
+                    const data = e.target.result; data.name = newName;
+                    store.put(data).onsuccess = () => { loadHistoryFiles(); showToast('Document renamed', 'success'); };
                 };
             }
         }
-async function sharePDF(id, filename) {
+
+        // SHARE FALLBACK TO DOWNLOAD FOR APKS
+        async function sharePDF(id, filename) {
             db.transaction(["pdfs"], "readonly").objectStore("pdfs").get(id).onsuccess = async (e) => {
                 const file = e.target.result;
                 if(file && file.pdfData) {
                     try {
                         const blob = dataURItoBlob(file.pdfData);
                         const fileObj = new File([blob], filename, { type: 'application/pdf' });
-                        
-                        // প্রথমে চেক করবে ব্রাউজার/অ্যাপ শেয়ার সাপোর্ট করে কিনা
                         if (navigator.canShare && navigator.canShare({ files: [fileObj] })) {
-                            await navigator.share({ 
-                                files: [fileObj], 
-                                title: filename,
-                                text: 'Document scanned with RasScanner.'
-                            });
+                            await navigator.share({ files: [fileObj], title: filename, text: 'Document scanned with RasScanner.' });
                             showToast('Shared successfully!', 'success');
-                        } else {
-                            // সাপোর্ট না করলে এরর থ্রো করবে যাতে ফলব্যাকে যায়
-                            throw new Error("ShareNotSupported");
-                        }
+                        } else throw new Error("ShareNotSupported");
                     } catch (err) { 
-                        // ইউজার যদি নিজে ক্যানসেল না করে থাকে, তবে অটো ডাউনলোড শুরু হবে
                         if(err.name !== 'AbortError') {
                             showToast('App blocked direct share. Downloading instead...', 'info');
-                            setTimeout(() => {
-                                saveToLocal(id); // সরাসরি ডাউনলোড কল করবে
-                            }, 1500);
+                            setTimeout(() => { saveToLocal(id); }, 1500);
                         }
                     }
                 }
@@ -773,11 +701,8 @@ async function sharePDF(id, filename) {
                 const file = e.target.result;
                 if(file && file.pdfData) {
                     const link = document.createElement('a');
-                    link.href = file.pdfData; 
-                    link.download = file.name; // Takes name directly from the database record
-                    document.body.appendChild(link); 
-                    link.click(); 
-                    document.body.removeChild(link);
+                    link.href = file.pdfData; link.download = file.name; 
+                    document.body.appendChild(link); link.click(); document.body.removeChild(link);
                 }
             };
         }
@@ -793,10 +718,7 @@ async function sharePDF(id, filename) {
 
         function deletePDF(id) {
             if(confirm("Delete this document forever?")) {
-                db.transaction(["pdfs"], "readwrite").objectStore("pdfs").delete(id).oncomplete = () => { 
-                    loadHistoryFiles(); 
-                    showToast('Document deleted', 'info'); 
-                };
+                db.transaction(["pdfs"], "readwrite").objectStore("pdfs").delete(id).oncomplete = () => { loadHistoryFiles(); showToast('Document deleted', 'info'); };
             }
         }
 
