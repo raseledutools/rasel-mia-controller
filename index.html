@@ -71,16 +71,17 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="flex flex-col gap-3">
                         <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">Image Filter</label>
+                            <label class="block text-xs font-bold text-gray-500 mb-1">Image Filter (Pro Modes)</label>
                             <div class="relative">
-                                <select id="imageFilter" class="w-full appearance-none bg-gray-50 border border-gray-200 text-gray-900 text-xs font-bold rounded-xl focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 pr-8 outline-none">
-                                    <option value="none">Original</option>
-                                    <option value="magic" selected>Magic Color (HD)</option>
-                                    <option value="pure-bw">Pure B&W</option>
+                                <select id="imageFilter" class="w-full appearance-none bg-gray-50 border border-gray-200 text-gray-900 text-sm font-bold rounded-xl focus:ring-indigo-500 focus:border-indigo-500 block p-3 pr-8 outline-none">
+                                    <option value="none">Original (No Filter)</option>
+                                    <option value="magic-pro" selected>Magic Pro (Eye Care & Bright)</option>
+                                    <option value="print-pro">Print Pro (Full B&W + Color Sign/Stamp)</option>
+                                    <option value="print-magic-pro">Print Magic Pro (Spot Remove & Clean)</option>
                                 </select>
-                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
                                     <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                                 </div>
                             </div>
@@ -88,11 +89,11 @@
                         <div>
                             <label class="block text-xs font-bold text-gray-500 mb-1">Page Size</label>
                             <div class="relative">
-                                <select id="pageSize" class="w-full appearance-none bg-gray-50 border border-gray-200 text-gray-900 text-xs font-bold rounded-xl focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 pr-8 outline-none">
-                                    <option value="fit" selected>Fit to Image</option>
-                                    <option value="a4">A4 Size</option>
+                                <select id="pageSize" class="w-full appearance-none bg-gray-50 border border-gray-200 text-gray-900 text-sm font-bold rounded-xl focus:ring-indigo-500 focus:border-indigo-500 block p-3 pr-8 outline-none">
+                                    <option value="fit" selected>Fit to Image (Best Quality)</option>
+                                    <option value="a4">A4 Size Document</option>
                                 </select>
-                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
                                     <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                                 </div>
                             </div>
@@ -267,7 +268,7 @@
         }
 
         // ==========================================
-        // FILE SELECTION
+        // FILE SELECTION 
         // ==========================================
         fileInput.addEventListener('change', (e) => { 
             processFiles(e.target.files); 
@@ -362,7 +363,7 @@
         }
 
         // ==========================================
-        // OOM CRASH SAFE HD IMAGE PROCESSING (CamScanner Effect)
+        // PRO FILTER MODES (Magic Pro, Print Pro, Spot Remove)
         // ==========================================
         async function processDocumentImage(dataUrl, filterType, applyAutoCrop) {
             return new Promise((resolve) => {
@@ -375,14 +376,13 @@
                     let targetHeight = img.height;
 
                     // SMART RESOLUTION LIMITER (Prevents WebView Out of Memory Crashes)
-                    // We cap the maximum size to 2500 pixels (High Quality A4 size)
                     const MAX_DIMENSION = 2500; 
 
-                    if (filterType === 'magic') {
-                        // If original image is small, increase resolution for crispness
+                    if (filterType !== 'none') {
+                        // All Pro modes upscale slightly for sharpness if original is small
                         if (Math.max(targetWidth, targetHeight) < 1500) {
-                            targetWidth *= 2;
-                            targetHeight *= 2;
+                            targetWidth *= 2.5;
+                            targetHeight *= 2.5;
                         }
                     }
 
@@ -402,40 +402,69 @@
                     ctx.imageSmoothingEnabled = true;
                     ctx.imageSmoothingQuality = 'high';
 
-                    // CamScanner style Base CSS Filter
-                    if (filterType === 'magic') {
-                        ctx.filter = 'contrast(1.4) brightness(1.15) saturate(1.2)';
-                    } else if (filterType === 'pure-bw') {
-                        ctx.filter = 'grayscale(100%) contrast(1.5) brightness(1.1)';
+                    // INITIAL CSS FILTERS based on chosen PRO MODE
+                    if (filterType === 'magic-pro') {
+                        ctx.filter = 'contrast(1.25) brightness(1.1) saturate(1.2)';
+                    } else if (filterType === 'print-pro') {
+                        ctx.filter = 'contrast(1.4) brightness(1.1) saturate(1.5)';
+                    } else if (filterType === 'print-magic-pro') {
+                        ctx.filter = 'contrast(1.6) brightness(1.2) saturate(1.1)';
                     }
                     
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-                    // Fast Pixel manipulation for CamScanner effect
-                    if (filterType === 'pure-bw' || filterType === 'magic') {
+                    // ADVANCED PIXEL MANIPULATION FOR PRO MODES
+                    if (filterType !== 'none') {
                         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                         const data = imageData.data;
                         
                         for (let i = 0; i < data.length; i += 4) {
                             let r = data[i], g = data[i+1], b = data[i+2];
                             
-                            if (filterType === 'pure-bw') {
-                                const avg = (r + g + b) / 3;
-                                const newVal = avg > 140 ? 255 : 0;
-                                data[i] = newVal; data[i+1] = newVal; data[i+2] = newVal;
+                            // MODE 1: Magic Pro (Eye soothing, bright but not harsh)
+                            if (filterType === 'magic-pro') {
+                                if (r > 160 && g > 160 && b > 160) {
+                                    data[i] = Math.min(255, r + 20); // Not blinding white
+                                    data[i+1] = Math.min(255, g + 20);
+                                    data[i+2] = Math.min(245, b + 10); // Slight warm tint for eye care
+                                } else if (r < 100 && g < 100 && b < 100) {
+                                    data[i] = Math.max(0, r - 20);
+                                    data[i+1] = Math.max(0, g - 20);
+                                    data[i+2] = Math.max(0, b - 20);
+                                }
                             } 
-                            else if (filterType === 'magic') {
-                                // Whiten Light Paper Background
-                                if (r > 150 && g > 150 && b > 150) {
-                                    data[i] = Math.min(255, r + 40);
-                                    data[i+1] = Math.min(255, g + 40);
-                                    data[i+2] = Math.min(255, b + 40);
-                                } 
-                                // Darken Pen Ink / Text for sharpness
-                                else if (r < 100 && g < 100 && b < 100) {
-                                    data[i] = Math.max(0, r - 30);
-                                    data[i+1] = Math.max(0, g - 30);
-                                    data[i+2] = Math.max(0, b - 30);
+                            // MODE 2: Print Pro (Full B&W + Keep original Color signatures/stamps)
+                            else if (filterType === 'print-pro') {
+                                let maxColor = Math.max(r, g, b);
+                                let minColor = Math.min(r, g, b);
+                                let colorDiff = maxColor - minColor;
+
+                                if (colorDiff < 35) { 
+                                    // It's grayscale (black text or white paper)
+                                    let avg = (r + g + b) / 3;
+                                    if (avg > 130) {
+                                        data[i] = 255; data[i+1] = 255; data[i+2] = 255; // Pure white BG
+                                    } else {
+                                        data[i] = 0; data[i+1] = 0; data[i+2] = 0; // Pure black Text
+                                    }
+                                } else {
+                                    // It's colored! (Stamp or Signature). Keep it, but clean light noise.
+                                    if (maxColor > 200 && minColor > 150) { 
+                                        data[i] = 255; data[i+1] = 255; data[i+2] = 255; 
+                                    }
+                                }
+                            }
+                            // MODE 3: Print Magic Pro (Aggressive Spot Removal, leaves only text)
+                            else if (filterType === 'print-magic-pro') {
+                                let avg = (r + g + b) / 3;
+                                if (avg > 135) { 
+                                    // Aggressive white threshold to kill all background spots/shadows
+                                    data[i] = 255; data[i+1] = 255; data[i+2] = 255;
+                                } else {
+                                    // Deepen text to make it extremely clear
+                                    data[i] = Math.max(0, r - 40);
+                                    data[i+1] = Math.max(0, g - 40);
+                                    data[i+2] = Math.max(0, b - 40);
                                 }
                             }
                         }
@@ -513,7 +542,7 @@
                             canvas = croppedCanvas;
                         }
                     }
-                    resolve(canvas.toDataURL('image/jpeg', 0.95)); // Highest Quality Output
+                    resolve(canvas.toDataURL('image/jpeg', 0.95)); // High Quality Output
                 };
                 img.src = dataUrl;
             });
@@ -580,7 +609,6 @@
                     progressBar.style.width = `${currentPercent}%`; progressTextPercent.innerText = `${currentPercent}%`;
                     progressTextItem.innerText = `${i + 1} / ${totalImages}`;
                     
-                    // Small delay to allow memory garbage collection in WebView
                     await new Promise(r => setTimeout(r, 50)); 
                 }
 
