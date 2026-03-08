@@ -80,7 +80,9 @@
                                     <option value="magic" selected>Magic Color (HD)</option>
                                     <option value="pure-bw">Pure B&W</option>
                                 </select>
-                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500"><svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                </div>
                             </div>
                         </div>
                         <div>
@@ -90,7 +92,9 @@
                                     <option value="fit" selected>Fit to Image</option>
                                     <option value="a4">A4 Size</option>
                                 </select>
-                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500"><svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -182,17 +186,26 @@
         // Configure PDF.js Worker
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
+        // ==========================================
         // DATABASE SETUP
+        // ==========================================
         let db;
         const dbName = "RasScannerDB";
         
         function initDB() {
             const request = indexedDB.open(dbName, 1);
-            request.onerror = (e) => showToast("Storage error", "error");
+            
+            request.onerror = (e) => {
+                showToast("Storage error", "error");
+            };
+            
             request.onupgradeneeded = (e) => {
                 db = e.target.result;
-                if (!db.objectStoreNames.contains("pdfs")) db.createObjectStore("pdfs", { keyPath: "id" });
+                if (!db.objectStoreNames.contains("pdfs")) {
+                    db.createObjectStore("pdfs", { keyPath: "id" });
+                }
             };
+            
             request.onsuccess = (e) => {
                 db = e.target.result;
                 loadHistoryFiles();
@@ -200,7 +213,9 @@
         }
         initDB();
 
+        // ==========================================
         // UI MANAGEMENT
+        // ==========================================
         let imagesArray = [];
         const fileInput = document.getElementById('fileInput');
         const cameraInput = document.getElementById('cameraInput');
@@ -210,13 +225,17 @@
         const btnGeneratePDF = document.getElementById('btnGeneratePDF');
         const loadingOverlay = document.getElementById('loadingOverlay');
 
-        // CAMERA
+        // ==========================================
+        // CAMERA HANDLING
+        // ==========================================
         let currentStream = null;
         let useFrontCamera = false;
 
         async function openCustomCamera() {
             try {
-                currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: useFrontCamera ? "user" : "environment" }});
+                currentStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: useFrontCamera ? "user" : "environment" }
+                });
                 document.getElementById('cameraVideo').srcObject = currentStream;
                 document.getElementById('cameraOverlay').classList.remove('hidden');
                 document.getElementById('cameraOverlay').classList.add('flex');
@@ -226,7 +245,9 @@
         }
 
         function closeCustomCamera() {
-            if(currentStream) currentStream.getTracks().forEach(track => track.stop());
+            if(currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
             document.getElementById('cameraOverlay').classList.add('hidden');
             document.getElementById('cameraOverlay').classList.remove('flex');
         }
@@ -240,40 +261,75 @@
         function capturePhoto() {
             const video = document.getElementById('cameraVideo');
             const canvas = document.getElementById('cameraCanvas');
-            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+            canvas.width = video.videoWidth; 
+            canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-            imagesArray.push({ id: Math.random().toString(36).substr(2, 9), file: null, dataUrl: canvas.toDataURL('image/jpeg', 0.9) });
-            closeCustomCamera(); renderImages(); updateUI();
+            
+            imagesArray.push({ 
+                id: Math.random().toString(36).substr(2, 9), 
+                file: null, 
+                dataUrl: canvas.toDataURL('image/jpeg', 0.9) 
+            });
+            
+            closeCustomCamera(); 
+            renderImages(); 
+            updateUI();
             showToast("Captured successfully!", "success");
         }
 
-        // SEQUENCE FIXED IMPORT
-        fileInput.addEventListener('change', (e) => { processFiles(e.target.files); fileInput.value = ''; }, false);
-        cameraInput.addEventListener('change', (e) => { processFiles(e.target.files); cameraInput.value = ''; }, false);
+        // ==========================================
+        // FILE SELECTION (BUG FIXED & SEQUENCE MAINTAINED)
+        // ==========================================
+        fileInput.addEventListener('change', (e) => { 
+            processFiles(e.target.files); 
+            fileInput.value = ''; 
+        }, false);
+        
+        cameraInput.addEventListener('change', (e) => { 
+            processFiles(e.target.files); 
+            cameraInput.value = ''; 
+        }, false);
 
         async function processFiles(files) {
             const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
             let newImagesCount = 0;
-            const filesArray = Array.from(files).sort((a, b) => files.indexOf(a) - files.indexOf(b));
+            
+            // Convert FileList to Array to process them sequentially
+            const filesArray = Array.from(files);
 
-            for (const file of filesArray) {
+            for (let i = 0; i < filesArray.length; i++) {
+                const file = filesArray[i];
                 if (validTypes.includes(file.type)) {
-                    const reader = new FileReader();
-                    const dataUrl = await new Promise((resolve) => {
-                        reader.onload = () => resolve(reader.result);
-                        reader.readAsDataURL(file);
-                    });
-                    imagesArray.push({ id: Math.random().toString(36).substr(2, 9), file: file, dataUrl: dataUrl });
-                    newImagesCount++;
-                    renderImages(); updateUI();
+                    try {
+                        const dataUrl = await new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onload = () => resolve(reader.result);
+                            reader.onerror = (error) => reject(error);
+                            reader.readAsDataURL(file);
+                        });
+                        
+                        imagesArray.push({ 
+                            id: Math.random().toString(36).substr(2, 9), 
+                            file: file, 
+                            dataUrl: dataUrl 
+                        });
+                        newImagesCount++;
+                        renderImages(); 
+                        updateUI();
+                    } catch (error) {
+                        console.error("Error processing file:", error);
+                    }
                 }
             }
-            if (newImagesCount > 0) showToast(`${newImagesCount} image(s) loaded`, 'success');
+            if (newImagesCount > 0) {
+                showToast(`${newImagesCount} image(s) loaded in order`, 'success');
+            }
         }
 
         function renderImages() {
             imageGrid.innerHTML = '';
             if (imagesArray.length === 0) return;
+            
             imagesArray.forEach((imgObj, index) => {
                 const item = document.createElement('div');
                 item.className = 'group relative aspect-[3/4] rounded-2xl overflow-hidden bg-gray-200 shadow-sm border border-white/50 shadow-md';
@@ -286,31 +342,67 @@
             });
         }
 
-        function removeImage(id) { imagesArray = imagesArray.filter(img => img.id !== id); renderImages(); updateUI(); }
-        function clearAllImages() { if(confirm('Clear the grid?')) { imagesArray = []; renderImages(); updateUI(); } }
+        function removeImage(id) { 
+            imagesArray = imagesArray.filter(img => img.id !== id); 
+            renderImages(); 
+            updateUI(); 
+        }
+        
+        function clearAllImages() { 
+            if(confirm('Clear the grid?')) { 
+                imagesArray = []; 
+                renderImages(); 
+                updateUI(); 
+            } 
+        }
         
         function updateUI() {
             if (imagesArray.length > 0) { 
-                topActionBtn.classList.remove('hidden'); emptyState.classList.add('hidden'); emptyState.classList.remove('flex');
-                btnGeneratePDF.classList.remove('hidden'); btnGeneratePDF.classList.add('flex');
+                topActionBtn.classList.remove('hidden'); 
+                emptyState.classList.add('hidden'); 
+                emptyState.classList.remove('flex');
+                btnGeneratePDF.classList.remove('hidden'); 
+                btnGeneratePDF.classList.add('flex');
             } else { 
-                topActionBtn.classList.add('hidden'); emptyState.classList.remove('hidden'); emptyState.classList.add('flex');
-                btnGeneratePDF.classList.add('hidden'); btnGeneratePDF.classList.remove('flex');
+                topActionBtn.classList.add('hidden'); 
+                emptyState.classList.remove('hidden'); 
+                emptyState.classList.add('flex');
+                btnGeneratePDF.classList.add('hidden'); 
+                btnGeneratePDF.classList.remove('flex');
             }
         }
 
-        // SMART CROP & FILTER
+        // ==========================================
+        // SMART CROP & HD RESOLUTION INCREASE
+        // ==========================================
         async function processDocumentImage(dataUrl, filterType, applyAutoCrop) {
             return new Promise((resolve) => {
                 const img = new Image();
                 img.onload = () => {
                     let canvas = document.createElement('canvas');
                     let ctx = canvas.getContext('2d', { willReadFrequently: true });
-                    canvas.width = img.width; canvas.height = img.height;
-                    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // INCREASING RESOLUTION FOR MAGIC COLOR
+                    let scaleMultiplier = 1;
+                    if (filterType === 'magic') {
+                        scaleMultiplier = 2; // Doubles the internal resolution pixels
+                    }
 
-                    if (filterType === 'magic') ctx.filter = 'contrast(1.4) brightness(1.2) saturate(1.3)';
-                    else if (filterType === 'pure-bw') ctx.filter = 'grayscale(100%) contrast(1.4) brightness(1.1)';
+                    canvas.width = img.width * scaleMultiplier; 
+                    canvas.height = img.height * scaleMultiplier;
+                    
+                    ctx.fillStyle = '#ffffff'; 
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    // Smooth rendering for upscale
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+
+                    if (filterType === 'magic') {
+                        ctx.filter = 'contrast(1.5) brightness(1.2) saturate(1.4)';
+                    } else if (filterType === 'pure-bw') {
+                        ctx.filter = 'grayscale(100%) contrast(1.5) brightness(1.1)';
+                    }
                     
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
@@ -325,47 +417,112 @@
                         ctx.putImageData(imageData, 0, 0);
                     }
                         
+                    // INTELLIGENT AUTO CROP
                     if (applyAutoCrop) {
                         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                         const data = imgData.data;
-                        const w = canvas.width; const h = canvas.height;
-                        let minX = w, minY = h, maxX = 0, maxY = 0;
-                        for(let x = 0; x < w; x++) {
-                            for(let y = 0; y < h; y++) {
-                                const i = (y * w + x) * 4;
-                                if(data[i] < 128) {
-                                    if(x < minX) minX = x; if(y < minY) minY = y;
-                                    if(x > maxX) maxX = x; if(y > maxY) maxY = y;
-                                }
+                        const w = canvas.width; 
+                        const h = canvas.height;
+                        
+                        let minX = 0, minY = 0, maxX = w - 1, maxY = h - 1;
+
+                        const getDarkRatioRow = (y, startX, endX) => {
+                            let darkCount = 0, total = 0;
+                            for (let x = startX; x <= endX; x += 3) {
+                                let i = (y * w + x) * 4;
+                                if (data[i] < 128) darkCount++;
+                                total++;
+                            }
+                            return total > 0 ? darkCount / total : 0;
+                        };
+
+                        const getDarkRatioCol = (x, startY, endY) => {
+                            let darkCount = 0, total = 0;
+                            for (let y = startY; y <= endY; y += 3) {
+                                let i = (y * w + x) * 4;
+                                if (data[i] < 128) darkCount++;
+                                total++;
+                            }
+                            return total > 0 ? darkCount / total : 0;
+                        };
+
+                        const reqConsecutiveW = Math.floor(w * 0.025);
+                        const reqConsecutiveH = Math.floor(h * 0.025);
+                        const BORDER_THRESHOLD = 0.08;
+                        const PAPER_THRESHOLD = 0.03;
+
+                        let consec = 0;
+                        for (let x = 0; x < w * 0.3; x++) {
+                            if (getDarkRatioCol(x, 0, h - 1) > BORDER_THRESHOLD) { minX = x; consec = 0; }
+                            else if (getDarkRatioCol(x, 0, h - 1) < PAPER_THRESHOLD) {
+                                consec++; if (consec > reqConsecutiveW) break;
                             }
                         }
-                        const cropWidth = maxX - minX; const cropHeight = maxY - minY;
+                        consec = 0;
+                        for (let x = w - 1; x > w * 0.7; x--) {
+                            if (getDarkRatioCol(x, 0, h - 1) > BORDER_THRESHOLD) { maxX = x; consec = 0; }
+                            else if (getDarkRatioCol(x, 0, h - 1) < PAPER_THRESHOLD) {
+                                consec++; if (consec > reqConsecutiveW) break;
+                            }
+                        }
+                        consec = 0;
+                        for (let y = 0; y < h * 0.3; y++) {
+                            if (getDarkRatioRow(y, minX, maxX) > BORDER_THRESHOLD) { minY = y; consec = 0; }
+                            else if (getDarkRatioRow(y, minX, maxX) < PAPER_THRESHOLD) {
+                                consec++; if (consec > reqConsecutiveH) break;
+                            }
+                        }
+                        consec = 0;
+                        for (let y = h - 1; y > h * 0.7; y--) {
+                            if (getDarkRatioRow(y, minX, maxX) > BORDER_THRESHOLD) { maxY = y; consec = 0; }
+                            else if (getDarkRatioRow(y, minX, maxX) < PAPER_THRESHOLD) {
+                                consec++; if (consec > reqConsecutiveH) break;
+                            }
+                        }
+
+                        const safetyTrimX = Math.floor(w * 0.015);
+                        const safetyTrimY = Math.floor(h * 0.015);
+                        minX = Math.min(minX + safetyTrimX, Math.floor(w * 0.4));
+                        minY = Math.min(minY + safetyTrimY, Math.floor(h * 0.4));
+                        maxX = Math.max(maxX - safetyTrimX, Math.floor(w * 0.6));
+                        maxY = Math.max(maxY - safetyTrimY, Math.floor(h * 0.6));
+
+                        const cropWidth = maxX - minX;
+                        const cropHeight = maxY - minY;
+
                         if (cropWidth > 0 && cropHeight > 0) {
                             const margin = Math.floor(Math.max(cropWidth, cropHeight) * 0.04);
                             let croppedCanvas = document.createElement('canvas');
-                            croppedCanvas.width = cropWidth + (margin * 2); croppedCanvas.height = cropHeight + (margin * 2);
+                            croppedCanvas.width = cropWidth + (margin * 2); 
+                            croppedCanvas.height = cropHeight + (margin * 2);
                             let cropCtx = croppedCanvas.getContext('2d');
-                            cropCtx.fillStyle = '#ffffff'; cropCtx.fillRect(0, 0, croppedCanvas.width, croppedCanvas.height);
+                            cropCtx.fillStyle = '#ffffff'; 
+                            cropCtx.fillRect(0, 0, croppedCanvas.width, croppedCanvas.height);
                             cropCtx.drawImage(canvas, minX, minY, cropWidth, cropHeight, margin, margin, cropWidth, cropHeight);
                             canvas = croppedCanvas;
                         }
                     }
-                    resolve(canvas.toDataURL('image/jpeg', 0.9)); 
+                    resolve(canvas.toDataURL('image/jpeg', 0.95)); // Max Quality
                 };
                 img.src = dataUrl;
             });
         }
 
-        // GENERATE PDF (HIGH DPI 300)
+        // ==========================================
+        // GENERATE PDF
+        // ==========================================
         async function generatePDF() {
             if (imagesArray.length === 0) return;
-            loadingOverlay.classList.remove('hidden'); loadingOverlay.classList.add('flex');
+            
+            loadingOverlay.classList.remove('hidden'); 
+            loadingOverlay.classList.add('flex');
             
             const progressBar = document.getElementById('progressBar');
             const progressTextPercent = document.getElementById('progressTextPercent');
             const progressTextItem = document.getElementById('progressTextItem');
             
-            progressBar.style.width = '0%'; progressTextPercent.innerText = '0%';
+            progressBar.style.width = '0%'; 
+            progressTextPercent.innerText = '0%';
             progressTextItem.innerText = `0 / ${imagesArray.length}`;
 
             await new Promise(r => setTimeout(r, 50)); 
@@ -376,17 +533,21 @@
                 const filterType = document.getElementById('imageFilter').value;
                 const doAutoCrop = document.getElementById('autoCrop').checked;
                 
-                let doc = null; const totalImages = imagesArray.length; let firstPageThumb = null;
+                let doc = null; 
+                const totalImages = imagesArray.length; 
+                let firstPageThumb = null;
 
                 for (let i = 0; i < totalImages; i++) {
                     const processedDataUrl = await processDocumentImage(imagesArray[i].dataUrl, filterType, doAutoCrop);
                     if(i === 0) firstPageThumb = processedDataUrl;
 
-                    const img = new Image(); img.src = processedDataUrl;
+                    const img = new Image(); 
+                    img.src = processedDataUrl;
                     await new Promise(resolve => img.onload = resolve);
 
                     const pxToMm = 0.264583;
-                    let imgWidthMm = img.width * pxToMm; let imgHeightMm = img.height * pxToMm;
+                    let imgWidthMm = img.width * pxToMm; 
+                    let imgHeightMm = img.height * pxToMm;
                     let orientation = imgWidthMm > imgHeightMm ? 'landscape' : 'portrait';
 
                     if (layoutType === 'fit') {
@@ -398,20 +559,28 @@
                         if (i === 0) doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: format, dpi: 300 }); 
                         else doc.addPage(format, 'portrait');
 
-                        let pdfPageWidth = doc.internal.pageSize.getWidth(); let pdfPageHeight = doc.internal.pageSize.getHeight();
-                        let imgRatio = img.width / img.height; let pageRatio = pdfPageWidth / pdfPageHeight;
-                        let finalWidth = pdfPageWidth; let finalHeight = pdfPageHeight;
+                        let pdfPageWidth = doc.internal.pageSize.getWidth(); 
+                        let pdfPageHeight = doc.internal.pageSize.getHeight();
+                        
+                        let imgRatio = img.width / img.height; 
+                        let pageRatio = pdfPageWidth / pdfPageHeight;
+                        let finalWidth = pdfPageWidth; 
+                        let finalHeight = pdfPageHeight;
 
                         if (imgRatio > pageRatio) finalHeight = pdfPageWidth / imgRatio;
                         else finalWidth = pdfPageHeight * imgRatio;
 
-                        let finalX = (pdfPageWidth - finalWidth) / 2; let finalY = (pdfPageHeight - finalHeight) / 2;
+                        let finalX = (pdfPageWidth - finalWidth) / 2; 
+                        let finalY = (pdfPageHeight - finalHeight) / 2;
+                        
                         doc.addImage(processedDataUrl, 'JPEG', finalX, finalY, finalWidth, finalHeight, undefined, 'FAST');
                     }
 
                     let currentPercent = Math.round(((i + 1) / totalImages) * 100);
-                    progressBar.style.width = `${currentPercent}%`; progressTextPercent.innerText = `${currentPercent}%`;
+                    progressBar.style.width = `${currentPercent}%`; 
+                    progressTextPercent.innerText = `${currentPercent}%`;
                     progressTextItem.innerText = `${i + 1} / ${totalImages}`;
+                    
                     await new Promise(r => setTimeout(r, 10)); 
                 }
 
@@ -420,8 +589,12 @@
                 const fileName = `RasScanner_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}_${d.getHours()}${d.getMinutes()}.pdf`;
 
                 const newRecord = {
-                    id: "doc_" + Date.now(), name: fileName, date: d.toLocaleString(),
-                    pageCount: totalImages, thumb: firstPageThumb, pdfData: pdfDataUri
+                    id: "doc_" + Date.now(), 
+                    name: fileName, 
+                    date: d.toLocaleString(),
+                    pageCount: totalImages, 
+                    thumb: firstPageThumb, 
+                    pdfData: pdfDataUri
                 };
 
                 const transaction = db.transaction(["pdfs"], "readwrite");
@@ -429,17 +602,29 @@
                 
                 transaction.oncomplete = () => {
                     showToast('Saved successfully to History!', 'success');
-                    imagesArray = []; renderImages(); updateUI(); loadHistoryFiles();
+                    imagesArray = []; 
+                    renderImages(); 
+                    updateUI(); 
+                    loadHistoryFiles();
+                    
                     const mainScroll = document.getElementById('mainScrollView');
                     mainScroll.scrollTo({ top: mainScroll.scrollHeight, behavior: 'smooth' });
                 };
-            } catch (error) { showToast('Error generating PDF', 'error'); } 
+            } catch (error) { 
+                showToast('Error generating PDF', 'error'); 
+                console.error(error);
+            } 
             finally {
-                setTimeout(() => { loadingOverlay.classList.add('hidden'); loadingOverlay.classList.remove('flex'); }, 500);
+                setTimeout(() => { 
+                    loadingOverlay.classList.add('hidden'); 
+                    loadingOverlay.classList.remove('flex'); 
+                }, 500);
             }
         }
 
+        // ==========================================
         // HISTORY & FILE MANAGEMENT
+        // ==========================================
         function loadHistoryFiles() {
             if(!db) return;
             const historyList = document.getElementById('historyList');
@@ -450,15 +635,20 @@
                 historyList.innerHTML = '';
 
                 if(files.length === 0) {
-                    emptyHistoryState.classList.remove('hidden'); emptyHistoryState.classList.add('flex');
+                    emptyHistoryState.classList.remove('hidden'); 
+                    emptyHistoryState.classList.add('flex');
                 } else {
-                    emptyHistoryState.classList.add('hidden'); emptyHistoryState.classList.remove('flex');
+                    emptyHistoryState.classList.add('hidden'); 
+                    emptyHistoryState.classList.remove('flex');
+                    
                     files.forEach(file => {
                         const item = document.createElement('div');
                         item.className = 'bg-white p-4 rounded-2xl shadow-sm border border-indigo-50 flex flex-col gap-3';
                         item.innerHTML = `
                             <div class="flex items-center gap-4 cursor-pointer" onclick="viewPDF('${file.id}')">
-                                <div class="w-14 h-16 bg-gray-200 rounded-lg overflow-hidden shrink-0 shadow-sm border border-gray-200"><img src="${file.thumb}" class="w-full h-full object-cover"></div>
+                                <div class="w-14 h-16 bg-gray-200 rounded-lg overflow-hidden shrink-0 shadow-sm border border-gray-200">
+                                    <img src="${file.thumb}" class="w-full h-full object-cover">
+                                </div>
                                 <div class="flex-1 min-w-0">
                                     <h4 class="font-bold text-gray-800 text-sm truncate">${file.name}</h4>
                                     <p class="text-xs text-gray-500 mt-0.5">${file.date}</p>
@@ -469,7 +659,7 @@
                                 <button onclick="viewPDF('${file.id}')" title="View" class="col-span-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 rounded-xl flex items-center justify-center transition-colors"><svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
                                 <button onclick="renamePDF('${file.id}', '${file.name}')" title="Rename" class="col-span-1 bg-orange-50 hover:bg-orange-100 text-orange-600 font-bold py-2 rounded-xl flex items-center justify-center transition-colors"><svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22h6a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v10"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10.4 12.6a2 2 0 1 1 3 3L8 21l-4 1 1-4Z"/></svg></button>
                                 <button onclick="sharePDF('${file.id}', '${file.name}')" title="Share" class="col-span-1 bg-green-50 hover:bg-green-100 text-green-600 font-bold py-2 rounded-xl flex items-center justify-center transition-colors"><svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg></button>
-                                <button onclick="saveToLocal('${file.id}', '${file.name}')" title="Download" class="col-span-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold py-2 rounded-xl flex items-center justify-center transition-colors"><svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg></button>
+                                <button onclick="saveToLocal('${file.id}')" title="Download" class="col-span-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold py-2 rounded-xl flex items-center justify-center transition-colors"><svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg></button>
                                 <button onclick="deletePDF('${file.id}')" title="Delete" class="col-span-1 bg-red-50 hover:bg-red-100 text-red-600 font-bold py-2 rounded-xl flex items-center justify-center transition-colors"><svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></button>
                             </div>
                         `;
@@ -479,7 +669,6 @@
             };
         }
 
-        // VIEW PDF INSIDE APK (Using PDF.js to bypass WebView iframe restriction)
         function viewPDF(id) {
             db.transaction(["pdfs"], "readonly").objectStore("pdfs").get(id).onsuccess = (e) => {
                 const file = e.target.result;
@@ -492,7 +681,6 @@
                     container.innerHTML = '<div class="text-gray-500 font-bold mt-10">Rendering PDF...</div>';
 
                     try {
-                        // Extract base64 part
                         const base64Data = file.pdfData.split(',')[1];
                         const pdfData = atob(base64Data);
                         const uint8Array = new Uint8Array(pdfData.length);
@@ -500,12 +688,11 @@
                             uint8Array[i] = pdfData.charCodeAt(i);
                         }
 
-                        // Load and render PDF
                         pdfjsLib.getDocument({data: uint8Array}).promise.then(pdf => {
-                            container.innerHTML = ''; // clear loading
+                            container.innerHTML = ''; 
                             for(let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
                                 pdf.getPage(pageNum).then(page => {
-                                    const viewport = page.getViewport({scale: 1.5}); // Adjust scale for mobile
+                                    const viewport = page.getViewport({scale: 1.5}); 
                                     const canvas = document.createElement('canvas');
                                     const context = canvas.getContext('2d');
                                     canvas.height = viewport.height;
@@ -528,10 +715,9 @@
         function closePdfPreview() {
             document.getElementById('pdfPreviewModal').classList.add('hidden');
             document.getElementById('pdfPreviewModal').classList.remove('flex');
-            document.getElementById('pdfRenderContainer').innerHTML = ''; // clear memory
+            document.getElementById('pdfRenderContainer').innerHTML = ''; 
         }
 
-        // RENAME PDF
         function renamePDF(id, currentName) {
             let baseName = currentName.endsWith('.pdf') ? currentName.slice(0, -4) : currentName;
             let newName = prompt("Enter new name for the document:", baseName);
@@ -539,37 +725,59 @@
                 if(!newName.toLowerCase().endsWith('.pdf')) newName += '.pdf';
                 const store = db.transaction(["pdfs"], "readwrite").objectStore("pdfs");
                 store.get(id).onsuccess = (e) => {
-                    const data = e.target.result; data.name = newName;
-                    store.put(data).onsuccess = () => { loadHistoryFiles(); showToast('Document renamed', 'success'); };
+                    const data = e.target.result; 
+                    data.name = newName;
+                    store.put(data).onsuccess = () => { 
+                        loadHistoryFiles(); 
+                        showToast('Document renamed', 'success'); 
+                    };
                 };
             }
         }
-
-        // SHARE PDF
-        async function sharePDF(id, filename) {
+async function sharePDF(id, filename) {
             db.transaction(["pdfs"], "readonly").objectStore("pdfs").get(id).onsuccess = async (e) => {
                 const file = e.target.result;
                 if(file && file.pdfData) {
                     try {
                         const blob = dataURItoBlob(file.pdfData);
                         const fileObj = new File([blob], filename, { type: 'application/pdf' });
+                        
+                        // প্রথমে চেক করবে ব্রাউজার/অ্যাপ শেয়ার সাপোর্ট করে কিনা
                         if (navigator.canShare && navigator.canShare({ files: [fileObj] })) {
-                            await navigator.share({ files: [fileObj], title: filename });
+                            await navigator.share({ 
+                                files: [fileObj], 
+                                title: filename,
+                                text: 'Document scanned with RasScanner.'
+                            });
                             showToast('Shared successfully!', 'success');
-                        } else showToast('Direct sharing not supported.', 'error');
-                    } catch (err) { if(err.name !== 'AbortError') showToast('Error sharing file.', 'error'); }
+                        } else {
+                            // সাপোর্ট না করলে এরর থ্রো করবে যাতে ফলব্যাকে যায়
+                            throw new Error("ShareNotSupported");
+                        }
+                    } catch (err) { 
+                        // ইউজার যদি নিজে ক্যানসেল না করে থাকে, তবে অটো ডাউনলোড শুরু হবে
+                        if(err.name !== 'AbortError') {
+                            showToast('App blocked direct share. Downloading instead...', 'info');
+                            setTimeout(() => {
+                                saveToLocal(id); // সরাসরি ডাউনলোড কল করবে
+                            }, 1500);
+                        }
+                    }
                 }
             };
         }
 
-        // PROPER NAME DOWNLOAD
-        function saveToLocal(id, filename) {
+        // DOWNLOAD DIRECTLY USING SAVED DB NAME
+        function saveToLocal(id) {
             db.transaction(["pdfs"], "readonly").objectStore("pdfs").get(id).onsuccess = (e) => {
                 const file = e.target.result;
                 if(file && file.pdfData) {
                     const link = document.createElement('a');
-                    link.href = file.pdfData; link.download = filename; // This ensures the proper name
-                    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                    link.href = file.pdfData; 
+                    link.download = file.name; // Takes name directly from the database record
+                    document.body.appendChild(link); 
+                    link.click(); 
+                    document.body.removeChild(link);
                 }
             };
         }
@@ -585,7 +793,10 @@
 
         function deletePDF(id) {
             if(confirm("Delete this document forever?")) {
-                db.transaction(["pdfs"], "readwrite").objectStore("pdfs").delete(id).oncomplete = () => { loadHistoryFiles(); showToast('Document deleted', 'info'); };
+                db.transaction(["pdfs"], "readwrite").objectStore("pdfs").delete(id).oncomplete = () => { 
+                    loadHistoryFiles(); 
+                    showToast('Document deleted', 'info'); 
+                };
             }
         }
 
