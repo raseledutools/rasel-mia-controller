@@ -296,7 +296,6 @@
                 for (let i = 0; i < filesArray.length; i++) {
                     const file = filesArray[i];
                     
-                    // Simple check allows mostly any image type from File Manager
                     if (file.type.match('image.*') || file.name.match(/\.(jpg|jpeg|png|webp)$/i)) {
                         const dataUrl = await new Promise((resolve, reject) => {
                             const reader = new FileReader();
@@ -366,7 +365,7 @@
         }
 
         // ==========================================
-        // SMART CROP & HD RESOLUTION (Magic Color)
+        // SMART CROP & HD RESOLUTION (CamScanner Magic Color Effect)
         // ==========================================
         async function processDocumentImage(dataUrl, filterType, applyAutoCrop) {
             return new Promise((resolve) => {
@@ -377,7 +376,7 @@
                     
                     let scaleMultiplier = 1;
                     if (filterType === 'magic') {
-                        scaleMultiplier = 2; // HD Resolution Up-scaling
+                        scaleMultiplier = 3; // 3x HD Resolution Up-scaling for sharp text
                     }
 
                     canvas.width = img.width * scaleMultiplier; 
@@ -389,21 +388,43 @@
                     ctx.imageSmoothingEnabled = true;
                     ctx.imageSmoothingQuality = 'high';
 
+                    // CamScanner style CSS Filter logic
                     if (filterType === 'magic') {
-                        ctx.filter = 'contrast(1.5) brightness(1.2) saturate(1.4)';
+                        // Increase contrast but keep saturation relatively normal so original colors stay intact
+                        ctx.filter = 'contrast(1.35) brightness(1.1) saturate(1.1)';
                     } else if (filterType === 'pure-bw') {
                         ctx.filter = 'grayscale(100%) contrast(1.5) brightness(1.1)';
                     }
                     
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-                    if (filterType === 'pure-bw') {
+                    // Pixel manipulation for B&W and Magic Color
+                    if (filterType === 'pure-bw' || filterType === 'magic') {
                         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                         const data = imageData.data;
+                        
                         for (let i = 0; i < data.length; i += 4) {
-                            const avg = (data[i] + data[i+1] + data[i+2]) / 3;
-                            const newVal = avg > 140 ? 255 : 0;
-                            data[i] = newVal; data[i+1] = newVal; data[i+2] = newVal;
+                            let r = data[i], g = data[i+1], b = data[i+2];
+                            
+                            if (filterType === 'pure-bw') {
+                                const avg = (r + g + b) / 3;
+                                const newVal = avg > 140 ? 255 : 0;
+                                data[i] = newVal; data[i+1] = newVal; data[i+2] = newVal;
+                            } 
+                            else if (filterType === 'magic') {
+                                // CamScanner Effect: Whiten light pixels (paper) & Darken dark pixels (text)
+                                if (r > 160 && g > 160 && b > 160) {
+                                    // Softly push lighter background to pure white
+                                    data[i] = Math.min(255, r + 30);
+                                    data[i+1] = Math.min(255, g + 30);
+                                    data[i+2] = Math.min(255, b + 30);
+                                } else if (r < 110 && g < 110 && b < 110) {
+                                    // Deepen the text for sharpness without touching colored ink
+                                    data[i] = Math.max(0, r - 20);
+                                    data[i+1] = Math.max(0, g - 20);
+                                    data[i+2] = Math.max(0, b - 20);
+                                }
+                            }
                         }
                         ctx.putImageData(imageData, 0, 0);
                     }
@@ -478,7 +499,7 @@
                             canvas = croppedCanvas;
                         }
                     }
-                    resolve(canvas.toDataURL('image/jpeg', 0.95)); 
+                    resolve(canvas.toDataURL('image/jpeg', 0.95)); // Highest Quality Output
                 };
                 img.src = dataUrl;
             });
