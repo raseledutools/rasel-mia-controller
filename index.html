@@ -6,7 +6,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#4F46E5">
-    <title>RasScanner Pro v4</title>
+    <title>RasScanner Pro v4.5</title>
     
     <script src="tailwindcss.js"></script>
     <script src="jspdf.min.js"></script>
@@ -25,13 +25,23 @@
         .toggle-checkbox:checked { right: 0; border-color: #4F46E5; }
         .toggle-checkbox:checked + .toggle-label { background-color: #4F46E5; }
         
+        /* Native Scrolling for PDF Viewer */
         #pdfViewerContainer { 
-            position: relative; overflow: hidden; 
-            width: 100%; height: 100%; touch-action: none; 
-            background-color: #e5e7eb;
-            cursor: grab;
+            position: relative; overflow: auto; 
+            width: 100%; height: 100%; 
+            background-color: #d1d5db;
         }
-        #pdfPagesList { transition: transform 0.1s ease-out; transform-origin: 0 0; }
+        #pdfPagesList { text-align: center; padding: 16px; }
+        .pdf-canvas-page {
+            display: inline-block;
+            width: 100%; /* Default width */
+            max-width: none !important;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            margin-bottom: 16px;
+            background-color: white;
+            transition: width 0.1s ease-out; /* Smooth pinch zoom */
+        }
+
         .highlight-file { animation: highlightGlow 2s ease-out; }
         @keyframes highlightGlow {
             0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.7); }
@@ -56,14 +66,18 @@
 
         <main id="mainScrollView" class="flex-1 overflow-y-auto relative block bg-gradient-to-b from-gray-50 to-gray-100 p-4 pb-24">
             
-            <div class="grid grid-cols-2 gap-4 mb-6">
-                <button onclick="openCustomCamera()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all text-sm">
+            <div class="grid grid-cols-3 gap-3 mb-6">
+                <button onclick="openCustomCamera()" class="col-span-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-2xl flex flex-col items-center justify-center gap-1.5 shadow-lg active:scale-95 transition-all text-xs">
                     <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-                    Open Camera
+                    Camera
                 </button>
-                <button onclick="document.getElementById('fileInput').click()" class="bg-white hover:bg-gray-50 border-2 border-indigo-100 text-indigo-700 font-bold py-4 rounded-2xl flex items-center justify-center gap-3 shadow-sm active:scale-95 transition-all text-sm">
+                <button onclick="document.getElementById('fileInput').click()" class="col-span-1 bg-white hover:bg-gray-50 border border-indigo-100 text-indigo-700 font-bold py-3.5 rounded-2xl flex flex-col items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all text-xs">
                     <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/><circle cx="9" cy="9" r="2"/><path d="M16 5h6"/><path d="M19 2v6"/></svg>
-                    Add Gallery
+                    Gallery
+                </button>
+                <button onclick="document.getElementById('pdfInput').click()" class="col-span-1 bg-white hover:bg-gray-50 border border-emerald-200 text-emerald-600 font-bold py-3.5 rounded-2xl flex flex-col items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all text-xs">
+                    <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M15 18a3 3 0 1 0-6 0"/><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M12 13v5"/></svg>
+                    Import PDF
                 </button>
             </div>
 
@@ -118,7 +132,7 @@
                         <svg class="w-10 h-10" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
                     </div>
                     <h3 class="font-bold text-xl text-gray-800">No Images Selected</h3>
-                    <p class="text-xs mt-1 text-center font-medium text-gray-500">Capture from camera or select from gallery.</p>
+                    <p class="text-xs mt-1 text-center font-medium text-gray-500">Capture, upload or import PDF.</p>
                 </div>
             </div>
 
@@ -145,6 +159,7 @@
 
         <input type="file" id="cameraInput" class="hidden" accept="image/*" capture="environment">
         <input type="file" id="fileInput" class="hidden" accept="image/jpeg, image/png, image/webp, image/jpg, image/*" multiple="multiple">
+        <input type="file" id="pdfInput" class="hidden" accept="application/pdf">
 
         <div id="cameraOverlay" class="absolute inset-0 bg-black z-[60] hidden flex-col">
             <div class="h-16 bg-gradient-to-b from-black/80 to-transparent text-white flex items-center justify-between px-4 absolute top-0 left-0 right-0 z-10">
@@ -162,6 +177,24 @@
         </div>
         <canvas id="cameraCanvas" class="hidden"></canvas>
 
+        <div id="pdfChoiceModal" class="absolute inset-0 bg-black/60 z-[80] hidden flex-col items-center justify-center p-6">
+            <div class="bg-white p-6 rounded-3xl w-full max-w-sm shadow-2xl">
+                <h3 class="text-xl font-black text-gray-800 mb-2">Import PDF Options</h3>
+                <p class="text-sm text-gray-500 mb-6">How do you want to process this PDF file?</p>
+                <div class="flex flex-col gap-3">
+                    <button onclick="executePdfImport('scan')" class="bg-indigo-600 text-white font-bold py-3.5 rounded-2xl shadow-md active:scale-95 transition-all flex justify-center items-center gap-2">
+                        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
+                        Scan & Apply Filters
+                    </button>
+                    <button onclick="executePdfImport('read')" class="bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold py-3.5 rounded-2xl shadow-sm active:scale-95 transition-all flex justify-center items-center gap-2">
+                        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                        Save Directly as Reader
+                    </button>
+                    <button onclick="cancelPdfImport()" class="mt-2 text-gray-400 font-bold py-2 active:scale-95 transition-all">Cancel</button>
+                </div>
+            </div>
+        </div>
+
         <div id="pdfPreviewModal" class="absolute inset-0 bg-gray-100 z-[70] hidden flex-col">
             <header class="bg-indigo-600 px-4 h-16 flex items-center justify-between shadow-md shrink-0 text-white z-20">
                 <button onclick="closePdfPreview()" class="p-2.5 rounded-full hover:bg-indigo-700 active:scale-95 transition-all">
@@ -174,10 +207,10 @@
                 <div class="w-10"></div>
             </header>
             
-            <div id="pdfViewerContainer" class="flex-1 overflow-hidden relative">
+            <div id="pdfViewerContainer" class="flex-1">
                 <div id="pdfLoadingText" class="absolute inset-0 flex items-center justify-center text-gray-500 font-bold z-10">Rendering PDF...</div>
-                <div id="pdfPagesList" class="w-full h-auto p-4 flex flex-col items-center gap-4">
-                </div>
+                <div id="pdfPagesList">
+                    </div>
             </div>
         </div>
 
@@ -199,14 +232,14 @@
     </div>
 
     <script>
-        // Configure PDF.js Worker for viewing PDF inside APK
+        // Configure PDF.js Worker
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
         // ==========================================
         // DATABASE SETUP (IndexedDB)
         // ==========================================
         let db;
-        const dbName = "RasScannerDBv4"; 
+        const dbName = "RasScannerDBv5"; 
         
         function initDB() {
             const request = indexedDB.open(dbName, 1);
@@ -228,10 +261,13 @@
         // GLOBAL STATE & UI ELEMENTS
         // ==========================================
         let imagesArray = [];
+        let tempImportPdfFile = null;
+
         const ui = {
             mainScroll: document.getElementById('mainScrollView'),
             fileIn: document.getElementById('fileInput'),
             cameraIn: document.getElementById('cameraInput'),
+            pdfIn: document.getElementById('pdfInput'),
             grid: document.getElementById('imageGrid'),
             empty: document.getElementById('emptyState'),
             topBtn: document.getElementById('topActionBtn'),
@@ -250,42 +286,30 @@
             pdfIndicator: document.getElementById('previewPageIndicator'),
             pdfPagesList: document.getElementById('pdfPagesList'),
             pdfContainer: document.getElementById('pdfViewerContainer'),
+            pdfModal: document.getElementById('pdfChoiceModal')
         };
 
         // ==========================================
         // CAMERA HANDLING
         // ==========================================
-        let currentStream = null;
-        let useFrontCamera = false;
-
+        let currentStream = null; let useFrontCamera = false;
         async function openCustomCamera() {
             try {
-                currentStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: useFrontCamera ? "user" : "environment", width: { ideal: 3000 } }
-                });
+                currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: useFrontCamera ? "user" : "environment", width: { ideal: 3000 } } });
                 ui.cameraVideo.srcObject = currentStream;
                 ui.cameraOverlay.classList.replace('hidden', 'flex');
-            } catch (err) {
-                ui.cameraIn.click(); 
-            }
+            } catch (err) { ui.cameraIn.click(); }
         }
-
         function closeCustomCamera() {
             if(currentStream) currentStream.getTracks().forEach(track => track.stop());
             ui.cameraOverlay.classList.replace('flex', 'hidden');
         }
-
         function switchCamera() {
-            useFrontCamera = !useFrontCamera;
-            closeCustomCamera();
-            setTimeout(openCustomCamera, 200);
+            useFrontCamera = !useFrontCamera; closeCustomCamera(); setTimeout(openCustomCamera, 200);
         }
-
         function capturePhoto() {
-            const video = ui.cameraVideo;
-            const canvas = ui.cameraCanvas;
-            canvas.width = video.videoWidth; 
-            canvas.height = video.videoHeight;
+            const video = ui.cameraVideo; const canvas = ui.cameraCanvas;
+            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
             
             const gridThumbCanvas = document.createElement('canvas');
@@ -294,74 +318,132 @@
             gTctx.drawImage(canvas, 0, 0, gridThumbCanvas.width, gridThumbCanvas.height);
 
             imagesArray.push({ 
-                id: Math.random().toString(36).substring(2, 9), 
-                file: null, 
-                dataUrl: canvas.toDataURL('image/jpeg', 0.95),
-                thumbUrl: gridThumbCanvas.toDataURL('image/jpeg', 0.8) 
+                id: Math.random().toString(36).substring(2, 9), file: null, 
+                dataUrl: canvas.toDataURL('image/jpeg', 0.95), thumbUrl: gridThumbCanvas.toDataURL('image/jpeg', 0.8) 
             });
-            
-            closeCustomCamera(); 
-            renderImages(); 
-            updateUI();
+            closeCustomCamera(); renderImages(); updateUI();
         }
 
         // ==========================================
-        // FILE SELECTION 
+        // FILE & PDF IMPORT SELECTION
         // ==========================================
         ui.fileIn.addEventListener('change', (e) => { processFiles(e.target.files); ui.fileIn.value = ''; });
         ui.cameraIn.addEventListener('change', (e) => { processFiles(e.target.files); ui.cameraIn.value = ''; });
+        
+        ui.pdfIn.addEventListener('change', (e) => {
+            if(e.target.files.length > 0) {
+                tempImportPdfFile = e.target.files[0];
+                ui.pdfModal.classList.replace('hidden', 'flex');
+            }
+            ui.pdfIn.value = '';
+        });
+
+        function cancelPdfImport() {
+            tempImportPdfFile = null;
+            ui.pdfModal.classList.replace('flex', 'hidden');
+        }
+
+        async function executePdfImport(mode) {
+            ui.pdfModal.classList.replace('flex', 'hidden');
+            if(!tempImportPdfFile) return;
+
+            const file = tempImportPdfFile;
+            tempImportPdfFile = null;
+
+            ui.loading.classList.replace('hidden', 'flex');
+            document.getElementById('loadingTitle').innerText = "Importing PDF...";
+            document.getElementById('loadingDesc').innerText = "Please wait, reading pages.";
+
+            const fileReader = new FileReader();
+            
+            fileReader.onload = async function() {
+                try {
+                    const typedarray = new Uint8Array(this.result);
+                    const pdf = await pdfjsLib.getDocument({data: typedarray}).promise;
+
+                    if (mode === 'scan') {
+                        // Extract pages to images for scanning
+                        for(let i=1; i<=pdf.numPages; i++) {
+                            const page = await pdf.getPage(i);
+                            const viewport = page.getViewport({scale: 2.0}); // High res extraction
+                            const canvas = document.createElement('canvas');
+                            canvas.width = viewport.width; canvas.height = viewport.height;
+                            await page.render({canvasContext: canvas.getContext('2d'), viewport: viewport}).promise;
+                            
+                            const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+                            
+                            const tCanvas = document.createElement('canvas');
+                            tCanvas.width = 150; tCanvas.height = Math.floor(150 * (canvas.height/canvas.width));
+                            tCanvas.getContext('2d').drawImage(canvas, 0,0, tCanvas.width, tCanvas.height);
+                            
+                            imagesArray.push({
+                                id: Math.random().toString(36).substring(2, 9),
+                                file: null, dataUrl: dataUrl, thumbUrl: tCanvas.toDataURL('image/jpeg', 0.8)
+                            });
+                        }
+                        renderImages(); updateUI();
+                        showToast("PDF imported for scanning!", "success");
+                    } else {
+                        // Direct to Reader History
+                        const page = await pdf.getPage(1);
+                        const viewport = page.getViewport({scale: 0.5});
+                        const canvas = document.createElement('canvas');
+                        canvas.width = viewport.width; canvas.height = viewport.height;
+                        await page.render({canvasContext: canvas.getContext('2d'), viewport: viewport}).promise;
+                        const thumbUrl = canvas.toDataURL('image/jpeg', 0.8);
+
+                        const b64Reader = new FileReader();
+                        b64Reader.onload = function() {
+                            const record = {
+                                id: "doc_" + Date.now(), name: file.name, date: new Date().toLocaleString(),
+                                pages: pdf.numPages, thumb: thumbUrl, pdf: b64Reader.result
+                            };
+                            db.transaction(["pdfs"], "readwrite").objectStore("pdfs").put(record).oncomplete = () => {
+                                loadHistoryFiles(); showToast("Saved to Reader History!", "success");
+                            };
+                        };
+                        b64Reader.readAsDataURL(file);
+                    }
+                } catch(e) { showToast("Failed to process PDF.", "error"); }
+                finally { ui.loading.classList.replace('flex', 'hidden'); }
+            };
+            fileReader.readAsArrayBuffer(file);
+        }
 
         async function processFiles(files) {
             if (!files || files.length === 0) return;
-            
-            let newImagesCount = 0;
             const filesArray = Array.from(files);
-
             ui.loading.classList.replace('hidden', 'flex');
             document.getElementById('loadingTitle').innerText = "Loading Images...";
-            document.getElementById('loadingDesc').innerText = `Processing ${filesArray.length} file(s). Please wait.`;
+            document.getElementById('loadingDesc').innerText = "Please wait, reading files.";
 
             try {
                 for (let file of filesArray) {
                     if (file.type.match('image.*') || file.name.match(/\.(jpg|jpeg|png|webp)$/i)) {
-                        const dataUrl = await new Promise((resolve, reject) => {
+                        const dataUrl = await new Promise((resolve) => {
                             const reader = new FileReader();
                             reader.onload = (event) => resolve(event.target.result);
-                            reader.onerror = (error) => reject(error);
                             reader.readAsDataURL(file);
                         });
-                        
-                        const img = new Image();
-                        img.src = dataUrl;
+                        const img = new Image(); img.src = dataUrl;
                         await new Promise(r => img.onload = r);
 
                         const gridThumbCanvas = document.createElement('canvas');
                         const gTctx = gridThumbCanvas.getContext('2d');
                         gridThumbCanvas.width = 150; gridThumbCanvas.height = Math.floor(150 * (img.height/img.width));
                         gTctx.drawImage(img, 0, 0, gridThumbCanvas.width, gridThumbCanvas.height);
-                        const thumbUrl = gridThumbCanvas.toDataURL('image/jpeg', 0.7);
-
-                        imagesArray.push({ id: Math.random().toString(36).substring(2, 9), file: file, dataUrl: dataUrl, thumbUrl: thumbUrl });
-                        newImagesCount++;
+                        
+                        imagesArray.push({ id: Math.random().toString(36).substring(2, 9), file: file, dataUrl: dataUrl, thumbUrl: gridThumbCanvas.toDataURL('image/jpeg', 0.7) });
                     }
                 }
-
-                if (newImagesCount > 0) {
-                    renderImages(); updateUI();
-                } else showToast('No valid images found.', 'error');
-            } catch (error) {
-                showToast('Failed to load some images', 'error');
-            } finally {
-                ui.loading.classList.replace('flex', 'hidden');
-                document.getElementById('loadingTitle').innerText = "Creating Magic...";
-                document.getElementById('loadingDesc').innerText = "Enhancing resolution and saving safe PDF.";
-            }
+                renderImages(); updateUI();
+            } catch (error) { showToast('Failed to load some images', 'error'); } 
+            finally { ui.loading.classList.replace('flex', 'hidden'); }
         }
 
         function renderImages() {
             ui.grid.innerHTML = '';
             if (imagesArray.length === 0) return;
-            
             imagesArray.forEach((imgObj, index) => {
                 const item = document.createElement('div');
                 item.className = 'group relative aspect-[3/4] rounded-2xl overflow-hidden bg-white shadow-lg border border-gray-100 p-1.5 transition-all';
@@ -376,7 +458,6 @@
 
         function removeImage(id) { imagesArray = imagesArray.filter(img => img.id !== id); renderImages(); updateUI(); }
         function clearAllImages() { if(confirm('Clear current scan grid?')) { imagesArray = []; renderImages(); updateUI(); } }
-        
         function updateUI() {
             if (imagesArray.length > 0) { 
                 ui.topBtn.classList.replace('hidden', 'flex'); ui.empty.classList.add('hidden');
@@ -388,58 +469,35 @@
         }
 
         // ==========================================
-        // PRO IMAGE PROCESSING (BUG FIXES: Smoothness, Auto-Crop, Pipeline)
+        // PRO IMAGE PROCESSING: MAGIC PRO WARMTH & SMART CROP
         // ==========================================
         async function processDocumentImage(dataUrl, filterType, applyAutoCrop) {
             return new Promise((resolve) => {
                 const img = new Image();
                 img.onload = () => {
-                    let targetWidth = img.width;
-                    let targetHeight = img.height;
+                    let targetWidth = img.width; let targetHeight = img.height;
 
-                    // 1. HIGHER RESOLUTION LIMITS (Up to 4000px for HD!)
                     const MAX_DIMENSION = (filterType === 'none') ? 4000 : 3000; 
-
-                    // Upscale smaller images for crisp text
-                    if (filterType !== 'none' && Math.max(targetWidth, targetHeight) < 1500) {
-                        targetWidth *= 2; targetHeight *= 2;
-                    }
-
+                    if (filterType !== 'none' && Math.max(targetWidth, targetHeight) < 1500) { targetWidth *= 2; targetHeight *= 2; }
                     if (Math.max(targetWidth, targetHeight) > MAX_DIMENSION) {
                         const ratio = MAX_DIMENSION / Math.max(targetWidth, targetHeight);
                         targetWidth *= ratio; targetHeight *= ratio;
                     }
 
-                    // 2. PERFECTED AUTO-CROP (Removes borders completely)
+                    // 1. SAFE AUTO-CROP
                     let cropX = 0, cropY = 0, cropW = targetWidth, cropH = targetHeight;
-                    
                     if (applyAutoCrop) {
-                        const thumbW = 100;
-                        const thumbH = Math.floor(100 * (img.height/img.width));
-                        const tCanvas = document.createElement('canvas');
-                        tCanvas.width = thumbW; tCanvas.height = thumbH;
-                        const tCtx = tCanvas.getContext('2d', { willReadFrequently: true });
-                        tCtx.drawImage(img, 0, 0, thumbW, thumbH);
+                        const thumbW = 100; const thumbH = Math.floor(100 * (img.height/img.width));
+                        const tCanvas = document.createElement('canvas'); tCanvas.width = thumbW; tCanvas.height = thumbH;
+                        const tCtx = tCanvas.getContext('2d', { willReadFrequently: true }); tCtx.drawImage(img, 0, 0, thumbW, thumbH);
                         const tData = tCtx.getImageData(0, 0, thumbW, thumbH).data;
-                        
                         let top = 0, bottom = thumbH-1, left = 0, right = thumbW-1;
                         
                         const isBorderDark = (isRow, idx) => {
                             let darks = 0, total = 0;
-                            if(isRow) {
-                                for(let x=left; x<=right; x++){
-                                    let i = (idx*thumbW + x)*4;
-                                    if((tData[i]+tData[i+1]+tData[i+2])/3 < 100) darks++;
-                                    total++;
-                                }
-                            } else {
-                                for(let y=top; y<=bottom; y++){
-                                    let i = (y*thumbW + idx)*4;
-                                    if((tData[i]+tData[i+1]+tData[i+2])/3 < 100) darks++;
-                                    total++;
-                                }
-                            }
-                            return (darks/total) > 0.7; // 70% dark = border
+                            if(isRow) { for(let x=left; x<=right; x++){ let i=(idx*thumbW+x)*4; if((tData[i]+tData[i+1]+tData[i+2])/3 < 100) darks++; total++; } } 
+                            else { for(let y=top; y<=bottom; y++){ let i=(y*thumbW+idx)*4; if((tData[i]+tData[i+1]+tData[i+2])/3 < 100) darks++; total++; } }
+                            return (darks/total) > 0.7; 
                         };
 
                         while(top < thumbH*0.3 && isBorderDark(true, top)) top++;
@@ -447,52 +505,30 @@
                         while(left < thumbW*0.3 && isBorderDark(false, left)) left++;
                         while(right > thumbW*0.7 && isBorderDark(false, right)) right--;
                         
-                        // Move inward 2-3% to completely eliminate any remaining black line
-                        top = Math.min(thumbH/2 - 5, top + 2);
-                        bottom = Math.max(thumbH/2 + 5, bottom - 2);
-                        left = Math.min(thumbW/2 - 5, left + 2);
-                        right = Math.max(thumbW/2 + 5, right - 2);
+                        top = Math.min(thumbH/2 - 5, top + 2); bottom = Math.max(thumbH/2 + 5, bottom - 2);
+                        left = Math.min(thumbW/2 - 5, left + 2); right = Math.max(thumbW/2 + 5, right - 2);
 
                         if(top >= bottom || left >= right) { top=0; bottom=thumbH-1; left=0; right=thumbW-1; }
-
-                        cropX = (left / thumbW) * targetWidth;
-                        cropY = (top / thumbH) * targetHeight;
-                        cropW = ((right - left) / thumbW) * targetWidth;
-                        cropH = ((bottom - top) / thumbH) * targetHeight;
+                        cropX = (left / thumbW) * targetWidth; cropY = (top / thumbH) * targetHeight;
+                        cropW = ((right - left) / thumbW) * targetWidth; cropH = ((bottom - top) / thumbH) * targetHeight;
                     }
 
-                    // 3. MAIN CANVAS DRAWING (Fixed filter pipeline bug)
+                    // 2. MAIN RENDERING 
                     const canvas = document.createElement('canvas');
-                    canvas.width = cropW;
-                    canvas.height = cropH;
+                    canvas.width = cropW; canvas.height = cropH;
                     const ctx = canvas.getContext('2d', { willReadFrequently: true });
-                    
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    
-                    // KEEP EDGES SMOOTH (Anti-Aliasing)
-                    ctx.imageSmoothingEnabled = true;
-                    ctx.imageSmoothingQuality = 'high';
+                    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
 
                     // INITIAL CSS FILTERS 
-                    if (filterType === 'magic-pro') {
-                        ctx.filter = 'contrast(1.2) brightness(1.1) saturate(1.2)';
-                    } else if (filterType === 'print-pro') {
-                        ctx.filter = 'contrast(1.3) brightness(1.1) saturate(1.3)';
-                    } else if (filterType === 'clear-pro') {
-                        ctx.filter = 'contrast(1.4) brightness(1.2) grayscale(100%)';
-                    } else if (filterType === 'super-bw') {
-                        ctx.filter = 'contrast(1.8) brightness(1.2) grayscale(100%)';
-                    }
+                    if (filterType === 'magic-pro') ctx.filter = 'contrast(1.3) brightness(1.1) saturate(1.3)';
+                    else if (filterType === 'print-pro') ctx.filter = 'contrast(1.4) brightness(1.1) saturate(1.3)';
+                    else if (filterType === 'clear-pro') ctx.filter = 'contrast(1.4) brightness(1.2) grayscale(100%)';
+                    else if (filterType === 'super-bw') ctx.filter = 'contrast(1.8) brightness(1.2) grayscale(100%)';
                     
-                    // Draw Cropped Region directly
-                    ctx.drawImage(img, 
-                        cropX * (img.width/targetWidth), cropY * (img.height/targetHeight), 
-                        cropW * (img.width/targetWidth), cropH * (img.height/targetHeight), 
-                        0, 0, cropW, cropH
-                    );
+                    ctx.drawImage(img, cropX * (img.width/targetWidth), cropY * (img.height/targetHeight), cropW * (img.width/targetWidth), cropH * (img.height/targetHeight), 0, 0, cropW, cropH);
 
-                    // 4. SOFT PIXEL THRESHOLDING (Prevents Jagged/Pixelated Edges!)
+                    // 3. SOFT PIXEL THRESHOLDING (Maintains Smooth Text edges + Warm Background)
                     if (filterType !== 'none' && filterType !== 'super-bw') {
                         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                         const data = imageData.data;
@@ -503,23 +539,24 @@
                             let diff = maxC - minC, avg = (r+g+b)/3;
 
                             if (filterType === 'magic-pro') {
-                                // WARM BRIGHT EYE CARE & CRISP TEXT
-                                // NOTE: We don't touch pixels between 90 and 160. This preserves smooth anti-aliasing!
-                                if (avg > 160) { 
-                                    data[i] = Math.min(255, r + 40);
-                                    data[i+1] = Math.min(255, g + 40);
-                                    data[i+2] = Math.min(245, b + 20); // Warm yellow tint
+                                // WARM BRIGHT EYE CARE & CRISP TEXT (Soft threshold preserves anti-aliasing)
+                                if (avg > 150) { 
+                                    // Make bright parts pure white but with creamy/warm tint
+                                    data[i] = 255; // Red max
+                                    data[i+1] = Math.min(255, g + 50); // Green up
+                                    data[i+2] = Math.min(240, b + 20); // Blue slightly lower for warm yellow feel
                                 } else if (avg < 90) {
+                                    // Deepen text to make it look fresh
                                     data[i] = Math.max(0, r - 30);
                                     data[i+1] = Math.max(0, g - 30);
-                                    data[i+2] = Math.max(0, b - 30);
+                                    data[i+2] = Math.max(0, b - 40);
                                 }
                             } 
                             else if (filterType === 'print-pro') {
-                                if (diff < 35) { // Grayscale
-                                    if (avg > 150) { data[i]=255; data[i+1]=255; data[i+2]=255; }
+                                if (diff < 35) { 
+                                    if (avg > 140) { data[i]=255; data[i+1]=255; data[i+2]=255; }
                                     else if (avg < 100) { data[i]=0; data[i+1]=0; data[i+2]=0; }
-                                } else { // Colored signature
+                                } else { 
                                     if (avg > 180) { data[i]=255; data[i+1]=255; data[i+2]=255; }
                                 }
                             }
@@ -530,7 +567,6 @@
                         ctx.putImageData(imageData, 0, 0);
                     }
 
-                    // Original gets 0.98 compression, others 0.95 for excellent quality
                     let quality = (filterType === 'none') ? 0.98 : 0.95;
                     resolve(canvas.toDataURL('image/jpeg', quality));
                 };
@@ -545,6 +581,7 @@
             if (imagesArray.length === 0) return;
             
             ui.loading.classList.replace('hidden', 'flex'); 
+            document.getElementById('loadingTitle').innerText = "Creating Magic...";
             ui.pBar.style.width = '0%'; ui.pTxtPercent.innerText = '0%';
             ui.pTxtItem.innerText = `0 / ${imagesArray.length}`;
 
@@ -564,15 +601,10 @@
                     const img = new Image(); img.src = enhancedDataUrl;
                     await new Promise(r => img.onload = r);
 
-                    const layoutMm = Math.max(img.width, img.height) * 0.264583; 
                     const isLandscape = img.width > img.height;
 
                     if (i === 0) {
-                        doc = new jsPDF({ 
-                            orientation: isLandscape ? 'l' : 'p', 
-                            unit: 'mm', format: [img.width * 0.264583, img.height * 0.264583], 
-                            dpi: 300 
-                        });
+                        doc = new jsPDF({ orientation: isLandscape ? 'l' : 'p', unit: 'mm', format: [img.width * 0.264583, img.height * 0.264583], dpi: 300 });
                     } else {
                         doc.addPage([img.width * 0.264583, img.height * 0.264583], isLandscape ? 'l' : 'p');
                     }
@@ -591,10 +623,7 @@
 
                 const record = { id, name, date: now.toLocaleString(), pages: total, thumb, pdf: base64Pdf };
                 
-                const tx = db.transaction(["pdfs"], "readwrite");
-                tx.objectStore("pdfs").put(record);
-                
-                tx.oncomplete = () => {
+                db.transaction(["pdfs"], "readwrite").objectStore("pdfs").put(record).oncomplete = () => {
                     showToast('PDF Saved successfully!', 'success');
                     imagesArray = []; renderImages(); updateUI(); loadHistoryFiles();
                     
@@ -604,13 +633,10 @@
                             fileEl.classList.add('highlight-file');
                             ui.mainScroll.scrollTo({ top: fileEl.offsetTop - 10, behavior: 'smooth' });
                         }
-                    }, 300);
+                    }, 400);
                 };
-            } catch (error) { 
-                showToast('Error generating PDF.', 'error'); 
-            } finally {
-                setTimeout(() => ui.loading.classList.replace('flex', 'hidden'), 600);
-            }
+            } catch (error) { showToast('Error generating PDF.', 'error'); } 
+            finally { setTimeout(() => ui.loading.classList.replace('flex', 'hidden'), 600); }
         }
 
         // ==========================================
@@ -655,11 +681,8 @@
 
         function deletePDF(id) {
             if(confirm("Confirm to delete this PDF forever?")) {
-                const tx = db.transaction(["pdfs"], "readwrite");
-                tx.objectStore("pdfs").delete(id);
-                tx.oncomplete = () => { 
-                    loadHistoryFiles(); 
-                    showToast('Document deleted.', 'info'); 
+                db.transaction(["pdfs"], "readwrite").objectStore("pdfs").delete(id).oncomplete = () => { 
+                    loadHistoryFiles(); showToast('Document deleted.', 'info'); 
                 };
             }
         }
@@ -668,10 +691,8 @@
             let baseName = currentName.toLowerCase().endsWith('.pdf') ? currentName.slice(0, -4) : currentName;
             let newName = prompt("Enter new filename:", baseName);
             if(newName && newName.trim() !== "" && newName.trim() !== baseName) {
-                newName = newName.trim();
-                if(!newName.toLowerCase().endsWith('.pdf')) newName += '.pdf';
-                const tx = db.transaction(["pdfs"], "readwrite");
-                const store = tx.objectStore("pdfs");
+                newName = newName.trim(); if(!newName.toLowerCase().endsWith('.pdf')) newName += '.pdf';
+                const store = db.transaction(["pdfs"], "readwrite").objectStore("pdfs");
                 store.get(id).onsuccess = (e) => {
                     const data = e.target.result; data.name = newName;
                     store.put(data).onsuccess = () => { loadHistoryFiles(); showToast('Renamed!', 'success'); };
@@ -705,10 +726,13 @@
         }
 
         // ==========================================
-        // PRO PDF VIEWER (WITH ZOOM & PAGE NUMBER)
+        // NATIVE SCROLL PDF VIEWER & SMOOTH ZOOM
         // ==========================================
-        let currentViewerState = { scale: 1, baseW: 0, touching: false, lastD: 0, lastX: 0, lastY: 0 };
-        
+        let pinchStartWidth = 100;
+        let currentViewerZoom = 100;
+        let isPinching = false;
+        let initialPinchDist = 0;
+
         function viewPDF(id) {
             db.transaction(["pdfs"], "readonly").objectStore("pdfs").get(id).onsuccess = (e) => {
                 const file = e.target.result;
@@ -716,7 +740,7 @@
                 ui.pdfTitle.innerText = file.name;
                 ui.pdfPreview.classList.replace('hidden', 'flex');
                 ui.pdfPagesList.innerHTML = ''; 
-                ui.pdfPagesList.style.transform = `scale(1) translate(0px, 0px)`; 
+                currentViewerZoom = 100; // Reset width to 100%
 
                 const loading = document.getElementById('pdfLoadingText');
                 loading.classList.replace('hidden', 'flex');
@@ -726,20 +750,16 @@
                     pdfjsLib.getDocument({data: ia}).promise.then(pdf => {
                         loading.classList.replace('flex', 'hidden');
                         ui.pdfIndicator.innerText = `1 / ${pdf.numPages}`;
-                        currentViewerState.scale = 1; 
 
                         for(let num=1; num<=pdf.numPages; num++) {
-                            const container = document.createElement('div');
-                            container.className = 'w-full flex items-center justify-center p-1';
-                            ui.pdfPagesList.appendChild(container);
-
                             pdf.getPage(num).then(page => {
                                 const vp = page.getViewport({scale: 1.5}); 
                                 const canvas = document.createElement('canvas');
                                 const ctx = canvas.getContext('2d');
                                 canvas.height = vp.height; canvas.width = vp.width;
-                                canvas.className = 'shadow-lg border border-gray-100 rounded bg-white w-full max-w-[380px] h-auto transition-opacity';
-                                container.appendChild(canvas);
+                                canvas.className = 'pdf-canvas-page';
+                                canvas.style.width = '100%';
+                                ui.pdfPagesList.appendChild(canvas);
                                 page.render({canvasContext: ctx, viewport: vp});
                             });
                         }
@@ -759,20 +779,17 @@
 
         function setupViewerInteractions() {
             const cont = ui.pdfContainer;
-            currentViewerState.lastD = 0; currentViewerState.scale = 1;
-
-            cont.addEventListener('touchstart', handleTouchStart, false);
-            cont.addEventListener('touchmove', handleTouchMove, false);
-            cont.addEventListener('touchend', handleTouchEnd, false);
+            cont.addEventListener('touchstart', handleTouchStart, {passive: false});
+            cont.addEventListener('touchmove', handleTouchMove, {passive: false});
+            cont.addEventListener('touchend', handleTouchEnd, {passive: false});
             
             cont.addEventListener('scroll', () => {
-                const elements = document.querySelectorAll('#pdfPagesList > div');
+                const canvases = document.querySelectorAll('.pdf-canvas-page');
                 const contY = cont.getBoundingClientRect().y;
-                for(let i=0; i<elements.length; i++) {
-                    const elY = elements[i].getBoundingClientRect().y;
-                    if (elY > contY - 200 && elY < contY + 200) {
-                        const maxP = elements.length;
-                        ui.pdfIndicator.innerText = `${i+1} / ${maxP}`;
+                for(let i=0; i<canvases.length; i++) {
+                    const elY = canvases[i].getBoundingClientRect().y;
+                    if (elY > contY - 300 && elY < contY + 300) {
+                        ui.pdfIndicator.innerText = `${i+1} / ${canvases.length}`;
                         break;
                     }
                 }
@@ -781,28 +798,26 @@
 
         function handleTouchStart(e) {
             if (e.touches.length === 2) {
-                currentViewerState.touching = true;
-                currentViewerState.lastD = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+                isPinching = true;
+                initialPinchDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+                pinchStartWidth = currentViewerZoom;
             }
         }
         function handleTouchMove(e) {
-            if (currentViewerState.touching && e.touches.length === 2) {
-                e.preventDefault();
+            if (isPinching && e.touches.length === 2) {
+                e.preventDefault(); // Prevents native page zoom
                 const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-                if (currentViewerState.lastD > 0) {
-                    let newScale = currentViewerState.scale + (dist - currentViewerState.lastD) * 0.007;
-                    newScale = Math.min(Math.max(1, newScale), 4); 
-                    currentViewerState.scale = newScale;
-                    ui.pdfPagesList.style.transform = `scale(${newScale}) translate(0px, 0px)`;
-                }
-                currentViewerState.lastD = dist;
+                const scale = dist / initialPinchDist;
+                let newWidth = pinchStartWidth * scale;
+                
+                currentViewerZoom = Math.min(Math.max(100, newWidth), 400); // Zoom 100% to 400%
+                document.querySelectorAll('.pdf-canvas-page').forEach(c => {
+                    c.style.width = `${currentViewerZoom}%`;
+                });
             }
         }
         function handleTouchEnd(e) {
-            if (e.touches.length < 2) {
-                currentViewerState.touching = false;
-                currentViewerState.lastD = 0;
-            }
+            if (e.touches.length < 2) isPinching = false;
         }
 
         function showToast(message, type = 'info') {
