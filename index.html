@@ -6,16 +6,16 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#4F46E5">
-    <title>RasScanner Pro</title>
+    <title>RasScanner Pro v3</title>
     
     <script src="tailwindcss.js"></script>
     <script src="jspdf.min.js"></script>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
 
     <style>
         ::-webkit-scrollbar { display: none; }
-        * { -webkit-tap-highlight-color: transparent; }
+        * { -webkit-tap-highlight-color: transparent; outline: none; }
         
         .toast-enter { animation: slideUp 0.3s ease-out forwards; }
         .toast-exit { animation: fadeOut 0.3s ease-out forwards; }
@@ -24,46 +24,55 @@
 
         .toggle-checkbox:checked { right: 0; border-color: #4F46E5; }
         .toggle-checkbox:checked + .toggle-label { background-color: #4F46E5; }
+        
+        #pdfViewerContainer { 
+            position: relative; overflow: hidden; 
+            width: 100%; height: 100%; touch-action: none; 
+            background-color: #e5e7eb;
+            cursor: grab;
+        }
+        #pdfPagesList { transition: transform 0.1s ease-out; transform-origin: 0 0; }
+        .highlight-file { animation: highlightGlow 2s ease-out; }
+        @keyframes highlightGlow {
+            0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.7); }
+            70% { box-shadow: 0 0 10px 10px rgba(79, 70, 229, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+        }
     </style>
 </head>
 <body class="bg-slate-800 h-screen w-screen flex justify-center sm:items-center font-sans text-gray-800 overflow-hidden select-none">
 
-    <div class="relative w-full h-full sm:max-w-[400px] sm:h-[800px] sm:max-h-[95vh] bg-white sm:rounded-[2.5rem] sm:shadow-2xl sm:border-[8px] sm:border-gray-900 flex flex-col overflow-hidden">
+    <div class="relative w-full h-full sm:max-w-[420px] sm:h-[840px] sm:max-h-[95vh] bg-gray-50 sm:rounded-[2.5rem] sm:shadow-2xl sm:border-[10px] sm:border-gray-950 flex flex-col overflow-hidden">
         
-        <header class="bg-indigo-600 px-5 h-16 flex items-center justify-between shadow-md z-30 shrink-0">
-            <div class="flex items-center gap-2 text-white">
-                <svg class="w-7 h-7 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><circle cx="10" cy="12" r="2"/><path d="m20 17-1.296-1.296a2.41 2.41 0 0 0-3.408 0L9 22"/></svg>
-                <span class="font-black text-xl tracking-tight text-white">Ras<span class="text-indigo-200">Scanner</span></span>
+        <header class="bg-indigo-600 px-5 h-16 flex items-center justify-between shadow-lg z-30 shrink-0">
+            <div class="flex items-center gap-2.5 text-white">
+                <svg class="w-8 h-8 text-indigo-100" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><circle cx="10" cy="12" r="2"/><path d="m20 17-1.296-1.296a2.41 2.41 0 0 0-3.408 0L9 22"/></svg>
+                <span class="font-black text-2xl tracking-tight text-white">Ras<span class="text-indigo-200">Scanner</span> <span class="text-xs text-indigo-300 font-bold">Pro v3</span></span>
             </div>
-            <button id="topActionBtn" onclick="clearAllImages()" class="hidden text-xs font-bold text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-full active:scale-95 transition-colors">
+            <button id="topActionBtn" onclick="clearAllImages()" class="hidden text-xs font-bold text-indigo-700 bg-white hover:bg-indigo-50 px-4 py-2 rounded-full active:scale-95 transition-all shadow">
                 Clear Grid
             </button>
         </header>
 
-        <main id="mainScrollView" class="flex-1 overflow-y-auto p-4 pb-20 relative block bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+        <main id="mainScrollView" class="flex-1 overflow-y-auto relative block bg-gradient-to-b from-gray-50 to-gray-100 p-4 pb-24">
             
-            <div class="flex gap-3 mb-5">
-                <button onclick="openCustomCamera()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-[0_4px_10px_rgba(79,70,229,0.3)] active:scale-95 transition-transform text-sm">
-                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <button onclick="openCustomCamera()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all text-sm">
+                    <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
                     Open Camera
                 </button>
-                <button onclick="document.getElementById('fileInput').click()" class="flex-1 bg-white hover:bg-gray-50 border-2 border-indigo-100 text-indigo-700 font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform text-sm">
-                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/><circle cx="9" cy="9" r="2"/><path d="M16 5h6"/><path d="M19 2v6"/></svg>
+                <button onclick="document.getElementById('fileInput').click()" class="bg-white hover:bg-gray-50 border-2 border-indigo-100 text-indigo-700 font-bold py-4 rounded-2xl flex items-center justify-center gap-3 shadow-sm active:scale-95 transition-all text-sm">
+                    <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/><circle cx="9" cy="9" r="2"/><path d="M16 5h6"/><path d="M19 2v6"/></svg>
                     Add Gallery
                 </button>
             </div>
 
-            <div class="bg-white p-4 rounded-2xl shadow-sm mb-5 border border-indigo-50">
-                <h3 class="font-black text-gray-800 mb-4 text-sm flex items-center gap-2 border-b border-gray-100 pb-2">
-                    <svg class="w-5 h-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg>
-                    PDF Generation Settings
-                </h3>
-                
+            <div class="bg-white p-5 rounded-3xl shadow-lg border border-gray-100 mb-6 transition-all duration-300">
                 <div class="space-y-4">
-                    <div class="flex items-center justify-between bg-indigo-50/50 p-3 rounded-xl border border-indigo-100">
+                    <div class="flex items-center justify-between bg-indigo-50/50 p-3 rounded-2xl border border-indigo-100">
                         <label class="text-sm font-bold text-gray-800 flex items-center gap-2" for="autoCrop">
                             <svg class="w-4 h-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg>
-                            Auto Crop Edge
+                            CamScanner Auto Crop
                         </label>
                         <div class="relative inline-block w-12 mr-2 align-middle select-none">
                             <input type="checkbox" id="autoCrop" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-gray-300 appearance-none cursor-pointer transition-all duration-300 z-10" checked/>
@@ -71,30 +80,31 @@
                         </div>
                     </div>
 
-                    <div class="flex flex-col gap-3">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">Image Filter (Pro Modes)</label>
+                    <div class="flex flex-col gap-4">
+                        <div class="flex-1">
+                            <label class="block text-xs font-bold text-gray-500 mb-1.5 ml-1">Pro Image Filter</label>
                             <div class="relative">
-                                <select id="imageFilter" class="w-full appearance-none bg-gray-50 border border-gray-200 text-gray-900 text-sm font-bold rounded-xl focus:ring-indigo-500 focus:border-indigo-500 block p-3 pr-8 outline-none">
-                                    <option value="none">Original (No Filter)</option>
-                                    <option value="magic-pro" selected>Magic Pro (Eye Care & Bright)</option>
-                                    <option value="print-pro">Print Pro (Full B&W + Color Sign/Stamp)</option>
-                                    <option value="print-magic-pro">Print Magic Pro (Spot Remove & Clean)</option>
+                                <select id="imageFilter" class="w-full appearance-none bg-gray-50 border border-gray-200 text-gray-900 text-sm font-bold rounded-2xl focus:ring-2 focus:ring-indigo-200 block p-3.5 pr-10 outline-none transition-all">
+                                    <option value="none">Original (Pure HD Quality)</option>
+                                    <option value="magic-pro" selected>Magic Pro (Bright Eye Care)</option>
+                                    <option value="print-pro">Print Pro (B&W + Color Signature)</option>
+                                    <option value="clear-pro">Clear Pro (Shadow Remover)</option>
+                                    <option value="super-bw">Super B&W (Old Documents)</option>
                                 </select>
-                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
-                                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-gray-500">
+                                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                                 </div>
                             </div>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">Page Size</label>
+                        <div class="flex-1">
+                            <label class="block text-xs font-bold text-gray-500 mb-1.5 ml-1">Page Size</label>
                             <div class="relative">
-                                <select id="pageSize" class="w-full appearance-none bg-gray-50 border border-gray-200 text-gray-900 text-sm font-bold rounded-xl focus:ring-indigo-500 focus:border-indigo-500 block p-3 pr-8 outline-none">
-                                    <option value="fit" selected>Fit to Image (Best Quality)</option>
+                                <select id="pageSize" class="w-full appearance-none bg-gray-50 border border-gray-200 text-gray-900 text-sm font-bold rounded-2xl focus:ring-2 focus:ring-indigo-200 block p-3.5 pr-10 outline-none transition-all">
+                                    <option value="fit" selected>Fit to Image (Max Quality)</option>
                                     <option value="a4">A4 Size Document</option>
                                 </select>
-                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
-                                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-gray-500">
+                                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                                 </div>
                             </div>
                         </div>
@@ -102,33 +112,33 @@
                 </div>
             </div>
 
-            <div id="imageGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
-                <div id="emptyState" class="col-span-full flex flex-col items-center justify-center py-16 text-gray-500 bg-white/60 rounded-2xl border-2 border-dashed border-gray-300">
-                    <div class="w-16 h-16 bg-white/80 text-indigo-400 rounded-full flex items-center justify-center mb-3 shadow-sm border border-indigo-50">
-                        <svg class="w-8 h-8" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+            <div id="imageGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+                <div id="emptyState" class="col-span-full flex flex-col items-center justify-center py-16 text-gray-500 bg-white/70 rounded-3xl border-2 border-dashed border-gray-300 shadow-inner">
+                    <div class="w-20 h-20 bg-gray-100 text-indigo-400 rounded-full flex items-center justify-center mb-4 shadow-md border border-gray-200">
+                        <svg class="w-10 h-10" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
                     </div>
-                    <h3 class="font-bold text-lg text-gray-700">No Images Selected</h3>
+                    <h3 class="font-bold text-xl text-gray-800">No Images Selected</h3>
                     <p class="text-xs mt-1 text-center font-medium text-gray-500">Capture from camera or select from gallery.</p>
                 </div>
             </div>
 
-            <button id="btnGeneratePDF" onclick="generatePDF()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black text-lg py-4 rounded-2xl flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(16,185,129,0.3)] active:scale-95 transition-transform hidden mb-8 border border-emerald-400">
-                <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
-                <span>SCAN NOW (CREATE PDF)</span>
+            <button id="btnGeneratePDF" onclick="generatePDF()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xl py-5 rounded-3xl flex items-center justify-center gap-3 shadow-[0_10px_25px_rgba(16,185,129,0.3)] active:scale-95 transition-all hidden mb-12 border border-emerald-400">
+                <svg class="w-7 h-7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
+                <span>SCAN & SAVE PDF</span>
             </button>
 
-            <div class="w-full h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent my-8"></div>
-
-            <h2 class="text-xl font-black text-gray-800 mb-4 px-1 flex items-center gap-2">
-                <svg class="w-6 h-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M15 18a3 3 0 1 0-6 0"/><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M12 13v5"/></svg>
-                Saved Documents
-            </h2>
-            
-            <div id="historyList" class="flex flex-col gap-4"></div>
-            
-            <div id="emptyHistoryState" class="flex flex-col items-center justify-center py-12 text-gray-400 bg-white/50 rounded-2xl border border-gray-200 hidden">
-                <svg class="w-12 h-12 mb-3 text-gray-300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
-                <p class="font-medium text-sm text-gray-500">No PDFs generated yet.</p>
+            <div id="historySection" class="relative">
+                <h2 class="text-2xl font-black text-gray-800 mb-5 px-1 flex items-center gap-2.5">
+                    <svg class="w-7 h-7 text-indigo-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M15 18a3 3 0 1 0-6 0"/><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M12 13v5"/></svg>
+                    Saved Documents
+                </h2>
+                
+                <div id="historyList" class="flex flex-col gap-5"></div>
+                
+                <div id="emptyHistoryState" class="flex flex-col items-center justify-center py-16 text-gray-400 bg-white/70 rounded-3xl border border-gray-200 hidden shadow-inner">
+                    <svg class="w-16 h-16 mb-4 text-gray-300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+                    <p class="font-medium text-sm text-gray-500">No PDFs generated yet.</p>
+                </div>
             </div>
 
         </main>
@@ -138,31 +148,35 @@
 
         <div id="cameraOverlay" class="absolute inset-0 bg-black z-[60] hidden flex-col">
             <div class="h-16 bg-gradient-to-b from-black/80 to-transparent text-white flex items-center justify-between px-4 absolute top-0 left-0 right-0 z-10">
-                <button onclick="closeCustomCamera()" class="p-2 rounded-full bg-black/40 backdrop-blur-sm active:scale-95 transition-transform"><svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
-                <button onclick="switchCamera()" class="p-2 rounded-full bg-black/40 backdrop-blur-sm active:scale-95 transition-transform"><svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
+                <button onclick="closeCustomCamera()" class="p-2 rounded-full bg-black/40 backdrop-blur-sm active:scale-95 transition-all"><svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+                <button onclick="switchCamera()" class="p-2 rounded-full bg-black/40 backdrop-blur-sm active:scale-95 transition-all"><svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
             </div>
             <div class="flex-1 relative flex items-center justify-center bg-black overflow-hidden">
                 <video id="cameraVideo" autoplay playsinline class="w-full h-full object-cover"></video>
             </div>
-            <div class="h-32 bg-black pb-safe flex items-center justify-center shrink-0">
-                <button onclick="capturePhoto()" class="w-20 h-20 bg-white rounded-full border-4 border-gray-500 active:scale-95 transition-transform flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.3)]">
-                    <div class="w-16 h-16 bg-white border-2 border-gray-300 rounded-full"></div>
+            <div class="h-36 bg-black pb-safe flex items-center justify-center shrink-0">
+                <button onclick="capturePhoto()" class="w-24 h-24 bg-white rounded-full border-[6px] border-gray-600 active:scale-95 transition-all flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+                    <div class="w-18 h-18 bg-white border-4 border-gray-300 rounded-full"></div>
                 </button>
             </div>
         </div>
         <canvas id="cameraCanvas" class="hidden"></canvas>
 
         <div id="pdfPreviewModal" class="absolute inset-0 bg-gray-100 z-[70] hidden flex-col">
-            <header class="bg-indigo-600 px-4 h-14 flex items-center justify-between shadow-md shrink-0 text-white z-10">
-                <button onclick="closePdfPreview()" class="p-2 rounded-full hover:bg-indigo-700 transition-colors">
-                    <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            <header class="bg-indigo-600 px-4 h-16 flex items-center justify-between shadow-md shrink-0 text-white z-20">
+                <button onclick="closePdfPreview()" class="p-2.5 rounded-full hover:bg-indigo-700 active:scale-95 transition-all">
+                    <svg class="w-7 h-7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
                 </button>
-                <span class="font-bold text-sm truncate max-w-[200px]" id="previewTitle">Document Preview</span>
-                <div class="w-10"></div>
-            </header>
+                <div class="text-center flex flex-col items-center">
+                    <span class="font-bold text-sm truncate max-w-[200px]" id="previewTitle">Document Preview</span>
+                    <span class="text-[10px] bg-white/20 px-2.5 py-0.5 rounded-full mt-0.5 font-bold" id="previewPageIndicator">1 / 1</span>
+                </div>
+                <div class="w-10"></div> </header>
             
-            <div id="pdfRenderContainer" class="flex-1 overflow-y-auto p-4 flex flex-col items-center gap-4 relative">
-                <div id="pdfLoadingText" class="text-gray-500 font-bold mt-10">Rendering PDF...</div>
+            <div id="pdfViewerContainer" class="flex-1 overflow-hidden relative">
+                <div id="pdfLoadingText" class="absolute inset-0 flex items-center justify-center text-gray-500 font-bold z-10">Rendering PDF...</div>
+                <div id="pdfPagesList" class="w-full h-auto p-4 flex flex-col items-center gap-4">
+                    </div>
             </div>
         </div>
 
@@ -180,22 +194,22 @@
             </div>
         </div>
 
-        <div id="toastContainer" class="absolute top-4 left-4 right-4 z-[110] flex flex-col gap-2 pointer-events-none"></div>
+        <div id="toastContainer" class="absolute top-4 left-4 right-4 z-[110] flex flex-col gap-3 pointer-events-none"></div>
     </div>
 
     <script>
         // Configure PDF.js Worker for viewing PDF inside APK
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
         // ==========================================
-        // DATABASE SETUP
+        // DATABASE SETUP (IndexedDB)
         // ==========================================
         let db;
-        const dbName = "RasScannerDB";
+        const dbName = "RasScannerDBv3"; // New DB version for safety
         
         function initDB() {
             const request = indexedDB.open(dbName, 1);
-            request.onerror = (e) => showToast("Storage error", "error");
+            request.onerror = (e) => showToast("Storage error. PDFs might not save.", "error");
             request.onupgradeneeded = (e) => {
                 db = e.target.result;
                 if (!db.objectStoreNames.contains("pdfs")) {
@@ -210,19 +224,35 @@
         initDB();
 
         // ==========================================
-        // UI MANAGEMENT
+        // GLOBAL STATE & UI ELEMENTS
         // ==========================================
         let imagesArray = [];
-        const fileInput = document.getElementById('fileInput');
-        const cameraInput = document.getElementById('cameraInput');
-        const imageGrid = document.getElementById('imageGrid');
-        const emptyState = document.getElementById('emptyState');
-        const topActionBtn = document.getElementById('topActionBtn');
-        const btnGeneratePDF = document.getElementById('btnGeneratePDF');
-        const loadingOverlay = document.getElementById('loadingOverlay');
+        const ui = {
+            mainScroll: document.getElementById('mainScrollView'),
+            fileIn: document.getElementById('fileInput'),
+            cameraIn: document.getElementById('cameraInput'),
+            grid: document.getElementById('imageGrid'),
+            empty: document.getElementById('emptyState'),
+            topBtn: document.getElementById('topActionBtn'),
+            genBtn: document.getElementById('btnGeneratePDF'),
+            historyList: document.getElementById('historyList'),
+            emptyHistory: document.getElementById('emptyHistoryState'),
+            loading: document.getElementById('loadingOverlay'),
+            pBar: document.getElementById('progressBar'),
+            pTxtItem: document.getElementById('progressTextItem'),
+            pTxtPercent: document.getElementById('progressTextPercent'),
+            cameraOverlay: document.getElementById('cameraOverlay'),
+            cameraVideo: document.getElementById('cameraVideo'),
+            cameraCanvas: document.getElementById('cameraCanvas'),
+            pdfPreview: document.getElementById('pdfPreviewModal'),
+            pdfTitle: document.getElementById('previewTitle'),
+            pdfIndicator: document.getElementById('previewPageIndicator'),
+            pdfPagesList: document.getElementById('pdfPagesList'),
+            pdfContainer: document.getElementById('pdfViewerContainer'),
+        };
 
         // ==========================================
-        // CAMERA HANDLING
+        // CAMERA HANDLING (FALLBACK COMPATIBLE)
         // ==========================================
         let currentStream = null;
         let useFrontCamera = false;
@@ -230,20 +260,19 @@
         async function openCustomCamera() {
             try {
                 currentStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: useFrontCamera ? "user" : "environment" }
+                    video: { facingMode: useFrontCamera ? "user" : "environment", width: { ideal: 2500 } }
                 });
-                document.getElementById('cameraVideo').srcObject = currentStream;
-                document.getElementById('cameraOverlay').classList.remove('hidden');
-                document.getElementById('cameraOverlay').classList.add('flex');
+                ui.cameraVideo.srcObject = currentStream;
+                ui.cameraOverlay.classList.replace('hidden', 'flex');
             } catch (err) {
-                document.getElementById('cameraInput').click(); // Fallback for APK WebView
+                showToast("Cannot access camera directly. Using fallback.", "error");
+                ui.cameraIn.click(); // Standard system camera fallback
             }
         }
 
         function closeCustomCamera() {
             if(currentStream) currentStream.getTracks().forEach(track => track.stop());
-            document.getElementById('cameraOverlay').classList.add('hidden');
-            document.getElementById('cameraOverlay').classList.remove('flex');
+            ui.cameraOverlay.classList.replace('flex', 'hidden');
         }
 
         function switchCamera() {
@@ -253,32 +282,36 @@
         }
 
         function capturePhoto() {
-            const video = document.getElementById('cameraVideo');
-            const canvas = document.getElementById('cameraCanvas');
+            const video = ui.cameraVideo;
+            const canvas = ui.cameraCanvas;
             canvas.width = video.videoWidth; 
             canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
             
-            imagesArray.push({ id: Math.random().toString(36).substr(2, 9), file: null, dataUrl: canvas.toDataURL('image/jpeg', 0.9) });
+            // Generate Thumbnail for Grid
+            const gridThumbCanvas = document.createElement('canvas');
+            const gTctx = gridThumbCanvas.getContext('2d');
+            gridThumbCanvas.width = 150; gridThumbCanvas.height = Math.floor(150 * (video.videoHeight/video.videoWidth));
+            gTctx.drawImage(canvas, 0, 0, gridThumbCanvas.width, gridThumbCanvas.height);
+
+            imagesArray.push({ 
+                id: Math.random().toString(36).substring(2, 9), 
+                file: null, 
+                dataUrl: canvas.toDataURL('image/jpeg', 0.92),
+                thumbUrl: gridThumbCanvas.toDataURL('image/jpeg', 0.8) // Small thumb for grid
+            });
             
             closeCustomCamera(); 
             renderImages(); 
             updateUI();
-            showToast("Captured successfully!", "success");
+            showToast("Captured成功!", "success");
         }
 
         // ==========================================
-        // FILE SELECTION 
+        // FILE SELECTION (SAFE MULTIPLE LOAD)
         // ==========================================
-        fileInput.addEventListener('change', (e) => { 
-            processFiles(e.target.files); 
-            fileInput.value = ''; 
-        }, false);
-        
-        cameraInput.addEventListener('change', (e) => { 
-            processFiles(e.target.files); 
-            cameraInput.value = ''; 
-        }, false);
+        ui.fileIn.addEventListener('change', (e) => { processFiles(e.target.files); ui.fileIn.value = ''; });
+        ui.cameraIn.addEventListener('change', (e) => { processFiles(e.target.files); ui.cameraIn.value = ''; });
 
         async function processFiles(files) {
             if (!files || files.length === 0) return;
@@ -286,16 +319,14 @@
             let newImagesCount = 0;
             const filesArray = Array.from(files);
 
-            loadingOverlay.classList.remove('hidden');
-            loadingOverlay.classList.add('flex');
+            ui.loading.classList.replace('hidden', 'flex');
             document.getElementById('loadingTitle').innerText = "Loading Images...";
-            document.getElementById('loadingDesc').innerText = "Please wait, reading files from storage.";
+            document.getElementById('loadingDesc').innerText = `Processing ${filesArray.length} file(s). Please wait.`;
 
             try {
-                for (let i = 0; i < filesArray.length; i++) {
-                    const file = filesArray[i];
-                    
-                    if (file.type.match('image.*') || file.name.match(/\.(jpg|jpeg|png|webp)$/i)) {
+                // Read files sequentially to preserve order and save memory
+                for (let file of filesArray) {
+                    if (file.type.match('image.*') || file.name.match(/\.(jpg|jpeg|png|webp|webp)$/i)) {
                         const dataUrl = await new Promise((resolve, reject) => {
                             const reader = new FileReader();
                             reader.onload = (event) => resolve(event.target.result);
@@ -303,497 +334,494 @@
                             reader.readAsDataURL(file);
                         });
                         
-                        imagesArray.push({ 
-                            id: Math.random().toString(36).substr(2, 9), 
-                            file: file, 
-                            dataUrl: dataUrl 
-                        });
+                        // Generate Grid Thumbnail quickly
+                        const img = new Image();
+                        img.src = dataUrl;
+                        await new Promise(r => img.onload = r);
+
+                        const gridThumbCanvas = document.createElement('canvas');
+                        const gTctx = gridThumbCanvas.getContext('2d');
+                        gridThumbCanvas.width = 150; gridThumbCanvas.height = Math.floor(150 * (img.height/img.width));
+                        gTctx.drawImage(img, 0, 0, gridThumbCanvas.width, gridThumbCanvas.height);
+                        const thumbUrl = gridThumbCanvas.toDataURL('image/jpeg', 0.7);
+
+                        imagesArray.push({ id: Math.random().toString(36).substring(2, 9), file: file, dataUrl: dataUrl, thumbUrl: thumbUrl });
                         newImagesCount++;
                     }
                 }
 
                 if (newImagesCount > 0) {
-                    renderImages(); 
-                    updateUI();
-                    showToast(`${newImagesCount} image(s) loaded successfully`, 'success');
-                } else {
-                    showToast('No valid images found.', 'error');
-                }
+                    renderImages(); updateUI();
+                    showToast(`${newImagesCount} image(s) loaded.`, 'success');
+                } else showToast('No valid images found.', 'error');
             } catch (error) {
-                console.error("Error reading files:", error);
                 showToast('Failed to load some images', 'error');
             } finally {
-                loadingOverlay.classList.add('hidden');
-                loadingOverlay.classList.remove('flex');
-                
+                ui.loading.classList.replace('flex', 'hidden');
                 document.getElementById('loadingTitle').innerText = "Creating Magic...";
-                document.getElementById('loadingDesc').innerText = "Please wait, enhancing resolution and saving safely.";
+                document.getElementById('loadingDesc').innerText = "Enhancing resolution and saving safe PDF.";
             }
         }
 
         function renderImages() {
-            imageGrid.innerHTML = '';
+            ui.grid.innerHTML = '';
             if (imagesArray.length === 0) return;
             
             imagesArray.forEach((imgObj, index) => {
                 const item = document.createElement('div');
-                item.className = 'group relative aspect-[3/4] rounded-2xl overflow-hidden bg-gray-200 shadow-sm border border-white/50 shadow-md';
+                item.className = 'group relative aspect-[3/4] rounded-2xl overflow-hidden bg-white shadow-lg border border-gray-100 p-1.5 transition-all';
                 item.innerHTML = `
-                    <img src="${imgObj.dataUrl}" class="w-full h-full object-cover">
-                    <button onclick="removeImage('${imgObj.id}')" class="absolute top-2 right-2 bg-white/90 text-red-500 p-2 rounded-full shadow-md"><svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></button>
-                    <div class="absolute bottom-2 left-2 bg-indigo-600 text-white text-xs font-black w-6 h-6 flex items-center justify-center rounded-full shadow-md border-2 border-white">${index + 1}</div>
+                    <img src="${imgObj.thumbUrl}" class="w-full h-full object-cover rounded-xl">
+                    <button onclick="removeImage('${imgObj.id}')" class="absolute top-2.5 right-2.5 bg-red-600 text-white p-2 rounded-full shadow-lg active:scale-95 transition-all scale-0 group-hover:scale-100"><svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+                    <div class="absolute bottom-2.5 left-2.5 bg-indigo-600 text-white text-xs font-black w-7 h-7 flex items-center justify-center rounded-full shadow-md border-2 border-white">${index + 1}</div>
                 `;
-                imageGrid.appendChild(item);
+                ui.grid.appendChild(item);
             });
         }
 
         function removeImage(id) { imagesArray = imagesArray.filter(img => img.id !== id); renderImages(); updateUI(); }
-        function clearAllImages() { if(confirm('Clear the grid?')) { imagesArray = []; renderImages(); updateUI(); } }
+        function clearAllImages() { if(confirm('Clear current scan grid?')) { imagesArray = []; renderImages(); updateUI(); } }
         
         function updateUI() {
             if (imagesArray.length > 0) { 
-                topActionBtn.classList.remove('hidden'); 
-                emptyState.classList.add('hidden'); emptyState.classList.remove('flex');
-                btnGeneratePDF.classList.remove('hidden'); btnGeneratePDF.classList.add('flex');
+                ui.topBtn.classList.replace('hidden', 'flex'); ui.empty.classList.add('hidden');
+                ui.genBtn.classList.replace('hidden', 'flex'); 
             } else { 
-                topActionBtn.classList.add('hidden'); 
-                emptyState.classList.remove('hidden'); emptyState.classList.add('flex');
-                btnGeneratePDF.classList.add('hidden'); btnGeneratePDF.classList.remove('flex');
+                ui.topBtn.classList.replace('flex', 'hidden'); ui.empty.classList.remove('hidden');
+                ui.genBtn.classList.replace('flex', 'hidden');
             }
         }
 
         // ==========================================
-        // PRO FILTER MODES (Magic Pro, Print Pro, Spot Remove)
+        // PRO IMAGE PROCESSING & CAMSCANNER AUTO CROP
         // ==========================================
         async function processDocumentImage(dataUrl, filterType, applyAutoCrop) {
             return new Promise((resolve) => {
                 const img = new Image();
                 img.onload = () => {
-                    let canvas = document.createElement('canvas');
-                    let ctx = canvas.getContext('2d', { willReadFrequently: true });
-                    
-                    let targetWidth = img.width;
-                    let targetHeight = img.height;
+                    let targetWidth = img.width, targetHeight = img.height;
 
-                    // SMART RESOLUTION LIMITER (Prevents WebView Out of Memory Crashes)
-                    const MAX_DIMENSION = 2500; 
+                    // SMART RESOLUTION LIMITER (Prevents memory crash, maintains A4 quality)
+                    const MAX_DIMENSION = (filterType === 'none') ? 3500 : 2500; 
 
-                    if (filterType !== 'none') {
-                        // All Pro modes upscale slightly for sharpness if original is small
-                        if (Math.max(targetWidth, targetHeight) < 1500) {
-                            targetWidth *= 2.5;
-                            targetHeight *= 2.5;
-                        }
-                    }
-
-                    // Limit max size to prevent crash
                     if (Math.max(targetWidth, targetHeight) > MAX_DIMENSION) {
                         const ratio = MAX_DIMENSION / Math.max(targetWidth, targetHeight);
-                        targetWidth *= ratio;
-                        targetHeight *= ratio;
+                        targetWidth *= ratio; targetHeight *= ratio;
                     }
 
-                    canvas.width = targetWidth; 
-                    canvas.height = targetHeight;
+                    // 1. INTELI-CROP (Analyzing tiny thumbnail for speed and RAM safety)
+                    let crop = { x: 0, y: 0, w: targetWidth, h: targetHeight };
                     
-                    ctx.fillStyle = '#ffffff'; 
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    if (applyAutoCrop) {
+                        const thumbW = 100;
+                        const thumbH = Math.floor(100 * (targetHeight/targetWidth));
+                        const tCanvas = document.createElement('canvas');
+                        tCanvas.width = thumbW; tCanvas.height = thumbH;
+                        const tCtx = tCanvas.getContext('2d', { willReadFrequently: true });
+                        tCtx.drawImage(img, 0, 0, thumbW, thumbH);
+                        const tData = tCtx.getImageData(0, 0, thumbW, thumbH).data;
+                        
+                        let top = 0, bottom = thumbH-1, left = 0, right = thumbW-1;
+                        
+                        // Detect dark lines (borders/shadows)
+                        const isBorderDark = (isRow, idx) => {
+                            let darks = 0, total = 0;
+                            if(isRow) {
+                                for(let x=left; x<=right; x++){
+                                    let i = (idx*thumbW + x)*4;
+                                    if((tData[i]+tData[i+1]+tData[i+2])/3 < 90) darks++; // Border threshold
+                                    total++;
+                                }
+                            } else {
+                                for(let y=top; y<=bottom; y++){
+                                    let i = (y*thumbW + idx)*4;
+                                    if((tData[i]+tData[i+1]+tData[i+2])/3 < 90) darks++;
+                                    total++;
+                                }
+                            }
+                            return (darks/total) > 0.8; // 80% must be dark to cut
+                        };
 
-                    ctx.imageSmoothingEnabled = true;
-                    ctx.imageSmoothingQuality = 'high';
+                        while(top < thumbH/3 && isBorderDark(true, top)) top++;
+                        while(bottom > thumbH*0.6 && isBorderDark(true, bottom)) bottom--;
+                        while(left < thumbW/3 && isBorderDark(false, left)) left++;
+                        while(right > thumbW*0.6 && isBorderDark(false, right)) right--;
+                        
+                        // Safety: If crop becomes invalid, reset to full.
+                        if(top >= bottom || left >= right) { top=0; bottom=thumbH-1; left=0; right=thumbW-1; }
 
-                    // INITIAL CSS FILTERS based on chosen PRO MODE
+                        // Translate thumb crop back to full size
+                        crop.x = (left / thumbW) * targetWidth;
+                        crop.y = (top / thumbH) * targetHeight;
+                        crop.w = ((right - left) / thumbW) * targetWidth;
+                        crop.h = ((bottom - top) / thumbH) * targetHeight;
+                        
+                        // ADD SLIGHT SAFE MARGIN (prevents cutting text) - 1.5%
+                        const safetyMargin = Math.floor(Math.max(crop.w, crop.h) * 0.015);
+                        canvasCropCanvas = document.createElement('canvas');
+                        canvasCropCanvas.width = crop.w + (safetyMargin * 2);
+                        canvasCropCanvas.height = crop.h + (safetyMargin * 2);
+                        const cCtx = canvasCropCanvas.getContext('2d');
+                        cCtx.fillStyle = '#ffffff'; cCtx.fillRect(0,0, canvasCropCanvas.width, canvasCropCanvas.height);
+                        
+                        // Draw onto the new canvas with margin
+                        cCtx.drawImage(img, crop.x * (img.width/targetWidth), crop.y * (img.height/targetHeight), crop.w * (img.width/targetWidth), crop.h * (img.height/targetHeight), safetyMargin, safetyMargin, crop.w, crop.h);
+                        resolve(canvasCropCanvas.toDataURL('image/jpeg', 0.95));
+                        return;
+                    }
+
+                    // If not cropping, process normally
+                    // 2. MAIN RENDERING CANVASES
+                    const mainCanvas = document.createElement('canvas');
+                    mainCanvas.width = crop.w; mainCanvas.height = crop.h;
+                    const ctx = mainCanvas.getContext('2d', { willReadFrequently: true });
+                    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+                    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+
+                    // INITIAL CSS FILTERS based on elegido PRO MODE
                     if (filterType === 'magic-pro') {
-                        ctx.filter = 'contrast(1.25) brightness(1.1) saturate(1.2)';
+                        ctx.filter = 'contrast(1.3) brightness(1.2) saturate(1.1)';
                     } else if (filterType === 'print-pro') {
-                        ctx.filter = 'contrast(1.4) brightness(1.1) saturate(1.5)';
-                    } else if (filterType === 'print-magic-pro') {
-                        ctx.filter = 'contrast(1.6) brightness(1.2) saturate(1.1)';
+                        ctx.filter = 'contrast(1.4) brightness(1.15)';
+                    } else if (filterType === 'clear-pro') {
+                        ctx.filter = 'contrast(1.2) brightness(1.2) grayscale(100%)';
+                    } else if (filterType === 'super-bw') {
+                        ctx.filter = 'contrast(2) brightness(1.2) grayscale(100%)';
                     }
                     
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, crop.x * (img.width/targetWidth), crop.y * (img.height/targetHeight), crop.w * (img.width/targetWidth), crop.h * (img.height/targetHeight), 0, 0, crop.w, crop.h);
 
-                    // ADVANCED PIXEL MANIPULATION FOR PRO MODES
-                    if (filterType !== 'none') {
-                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    // 3. PIXEL LEVEL MAGIC (CamScanner Effects - skipped for 'none' to keep pure quality)
+                    if (filterType !== 'none' && filterType !== 'super-bw') {
+                        const imageData = ctx.getImageData(0, 0, mainCanvas.width, mainCanvas.height);
                         const data = imageData.data;
                         
                         for (let i = 0; i < data.length; i += 4) {
-                            let r = data[i], g = data[i+1], b = data[i+2];
-                            
-                            // MODE 1: Magic Pro (Eye soothing, bright but not harsh)
-                            if (filterType === 'magic-pro') {
-                                if (r > 160 && g > 160 && b > 160) {
-                                    data[i] = Math.min(255, r + 20); // Not blinding white
-                                    data[i+1] = Math.min(255, g + 20);
-                                    data[i+2] = Math.min(245, b + 10); // Slight warm tint for eye care
-                                } else if (r < 100 && g < 100 && b < 100) {
-                                    data[i] = Math.max(0, r - 20);
-                                    data[i+1] = Math.max(0, g - 20);
-                                    data[i+2] = Math.max(0, b - 20);
-                                }
-                            } 
-                            // MODE 2: Print Pro (Full B&W + Keep original Color signatures/stamps)
-                            else if (filterType === 'print-pro') {
-                                let maxColor = Math.max(r, g, b);
-                                let minColor = Math.min(r, g, b);
-                                let colorDiff = maxColor - minColor;
+                            let r=data[i], g=data[i+1], b=data[i+2];
+                            let maxC = Math.max(r,g,b); let minC = Math.min(r,g,b);
+                            let colorDiff = maxC - minC; let avg = (r+g+b)/3;
 
-                                if (colorDiff < 35) { 
-                                    // It's grayscale (black text or white paper)
-                                    let avg = (r + g + b) / 3;
-                                    if (avg > 130) {
-                                        data[i] = 255; data[i+1] = 255; data[i+2] = 255; // Pure white BG
-                                    } else {
-                                        data[i] = 0; data[i+1] = 0; data[i+2] = 0; // Pure black Text
-                                    }
-                                } else {
-                                    // It's colored! (Stamp or Signature). Keep it, but clean light noise.
-                                    if (maxColor > 200 && minColor > 150) { 
-                                        data[i] = 255; data[i+1] = 255; data[i+2] = 255; 
-                                    }
+                            // Bright Eye Care (White Background + Soothing Warmth for Eyes)
+                            if (filterType === 'magic-pro') {
+                                if (avg > 150) { 
+                                    data[i]=Math.min(255, r+30); data[i+1]=Math.min(255, g+30); data[i+2]=Math.min(245, b+20); 
+                                } else if (avg < 90) { data[i]=Math.max(0,r-20); data[i+1]=Math.max(0,g-20); data[i+2]=Math.max(0,b-20); }
+                            } 
+                            // Print Pro (B&W + Keep original Color signatures/stamps)
+                            else if (filterType === 'print-pro') {
+                                if (colorDiff < 40) { // It's gray
+                                    if (avg > 130) { data[i]=255; data[i+1]=255; data[i+2]=255; }
+                                    else { data[i]=0; data[i+1]=0; data[i+2]=0; }
+                                } else { // Colored. Keep it.
+                                    if (maxC > 200 && minC > 140) { data[i]=255; data[i+1]=255; data[i+2]=255; }
                                 }
                             }
-                            // MODE 3: Print Magic Pro (Aggressive Spot Removal, leaves only text)
-                            else if (filterType === 'print-magic-pro') {
-                                let avg = (r + g + b) / 3;
-                                if (avg > 135) { 
-                                    // Aggressive white threshold to kill all background spots/shadows
-                                    data[i] = 255; data[i+1] = 255; data[i+2] = 255;
-                                } else {
-                                    // Deepen text to make it extremely clear
-                                    data[i] = Math.max(0, r - 40);
-                                    data[i+1] = Math.max(0, g - 40);
-                                    data[i+2] = Math.max(0, b - 40);
-                                }
+                            // Clear Pro (Aggressive Grey Shadow Removal)
+                            else if (filterType === 'clear-pro') {
+                                if (avg > 130) { data[i]=255; data[i+1]=255; data[i+2]=255; } // Pure white
                             }
                         }
                         ctx.putImageData(imageData, 0, 0);
                     }
-                        
-                    // Intelligent Auto Crop
-                    if (applyAutoCrop) {
-                        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                        const data = imgData.data;
-                        const w = canvas.width; const h = canvas.height;
-                        
-                        let minX = 0, minY = 0, maxX = w - 1, maxY = h - 1;
 
-                        const getDarkRatioRow = (y, startX, endX) => {
-                            let darkCount = 0, total = 0;
-                            for (let x = startX; x <= endX; x += 3) {
-                                let i = (y * w + x) * 4;
-                                if (data[i] < 128) darkCount++; total++;
-                            }
-                            return total > 0 ? darkCount / total : 0;
-                        };
-
-                        const getDarkRatioCol = (x, startY, endY) => {
-                            let darkCount = 0, total = 0;
-                            for (let y = startY; y <= endY; y += 3) {
-                                let i = (y * w + x) * 4;
-                                if (data[i] < 128) darkCount++; total++;
-                            }
-                            return total > 0 ? darkCount / total : 0;
-                        };
-
-                        const reqConsecutiveW = Math.floor(w * 0.025);
-                        const reqConsecutiveH = Math.floor(h * 0.025);
-                        const BORDER_THRESHOLD = 0.08;
-                        const PAPER_THRESHOLD = 0.03;
-
-                        let consec = 0;
-                        for (let x = 0; x < w * 0.3; x++) {
-                            if (getDarkRatioCol(x, 0, h - 1) > BORDER_THRESHOLD) { minX = x; consec = 0; }
-                            else if (getDarkRatioCol(x, 0, h - 1) < PAPER_THRESHOLD) { consec++; if (consec > reqConsecutiveW) break; }
-                        }
-                        consec = 0;
-                        for (let x = w - 1; x > w * 0.7; x--) {
-                            if (getDarkRatioCol(x, 0, h - 1) > BORDER_THRESHOLD) { maxX = x; consec = 0; }
-                            else if (getDarkRatioCol(x, 0, h - 1) < PAPER_THRESHOLD) { consec++; if (consec > reqConsecutiveW) break; }
-                        }
-                        consec = 0;
-                        for (let y = 0; y < h * 0.3; y++) {
-                            if (getDarkRatioRow(y, minX, maxX) > BORDER_THRESHOLD) { minY = y; consec = 0; }
-                            else if (getDarkRatioRow(y, minX, maxX) < PAPER_THRESHOLD) { consec++; if (consec > reqConsecutiveH) break; }
-                        }
-                        consec = 0;
-                        for (let y = h - 1; y > h * 0.7; y--) {
-                            if (getDarkRatioRow(y, minX, maxX) > BORDER_THRESHOLD) { maxY = y; consec = 0; }
-                            else if (getDarkRatioRow(y, minX, maxX) < PAPER_THRESHOLD) { consec++; if (consec > reqConsecutiveH) break; }
-                        }
-
-                        const safetyTrimX = Math.floor(w * 0.015); const safetyTrimY = Math.floor(h * 0.015);
-                        minX = Math.min(minX + safetyTrimX, Math.floor(w * 0.4));
-                        minY = Math.min(minY + safetyTrimY, Math.floor(h * 0.4));
-                        maxX = Math.max(maxX - safetyTrimX, Math.floor(w * 0.6));
-                        maxY = Math.max(maxY - safetyTrimY, Math.floor(h * 0.6));
-
-                        const cropWidth = maxX - minX; const cropHeight = maxY - minY;
-
-                        if (cropWidth > 0 && cropHeight > 0) {
-                            const margin = Math.floor(Math.max(cropWidth, cropHeight) * 0.04);
-                            let croppedCanvas = document.createElement('canvas');
-                            croppedCanvas.width = cropWidth + (margin * 2); 
-                            croppedCanvas.height = cropHeight + (margin * 2);
-                            let cropCtx = croppedCanvas.getContext('2d');
-                            cropCtx.fillStyle = '#ffffff'; cropCtx.fillRect(0, 0, croppedCanvas.width, croppedCanvas.height);
-                            cropCtx.drawImage(canvas, minX, minY, cropWidth, cropHeight, margin, margin, cropWidth, cropHeight);
-                            canvas = croppedCanvas;
-                        }
-                    }
-                    resolve(canvas.toDataURL('image/jpeg', 0.95)); // High Quality Output
+                    // Save output quality (0.98 for Original, 0.94 for others for balance)
+                    let outputQuality = (filterType === 'none') ? 0.98 : 0.94;
+                    resolve(mainCanvas.toDataURL('image/jpeg', outputQuality));
                 };
                 img.src = dataUrl;
             });
         }
 
         // ==========================================
-        // GENERATE PDF (300 DPI - GC safe)
+        // PDF GENERATION (OOM SAFE SEQUENCE)
         // ==========================================
         async function generatePDF() {
             if (imagesArray.length === 0) return;
             
-            loadingOverlay.classList.remove('hidden'); 
-            loadingOverlay.classList.add('flex');
-            
-            const progressBar = document.getElementById('progressBar');
-            const progressTextPercent = document.getElementById('progressTextPercent');
-            const progressTextItem = document.getElementById('progressTextItem');
-            
-            progressBar.style.width = '0%'; progressTextPercent.innerText = '0%';
-            progressTextItem.innerText = `0 / ${imagesArray.length}`;
+            ui.loading.classList.replace('hidden', 'flex'); 
+            ui.pBar.style.width = '0%'; ui.pTxtPercent.innerText = '0%';
+            ui.pTxtItem.innerText = `0 / ${imagesArray.length}`;
 
-            await new Promise(r => setTimeout(r, 100)); 
+            // Small delay to let browser UI update
+            await new Promise(r => setTimeout(r, 150)); 
 
             try {
                 const { jsPDF } = window.jspdf;
-                const layoutType = document.getElementById('pageSize').value;
-                const filterType = document.getElementById('imageFilter').value;
-                const doAutoCrop = document.getElementById('autoCrop').checked;
+                const filter = document.getElementById('imageFilter').value;
+                const cropSetting = document.getElementById('autoCrop').checked;
                 
-                let doc = null; const totalImages = imagesArray.length; let firstPageThumb = null;
+                let doc = null; const total = imagesArray.length; let thumb = null;
 
-                for (let i = 0; i < totalImages; i++) {
-                    const processedDataUrl = await processDocumentImage(imagesArray[i].dataUrl, filterType, doAutoCrop);
-                    if(i === 0) firstPageThumb = processedDataUrl;
+                for (let i = 0; i < total; i++) {
+                    const enhancedDataUrl = await processDocumentImage(imagesArray[i].dataUrl, filter, cropSetting);
+                    if(i === 0) thumb = enhancedDataUrl;
 
-                    const img = new Image(); img.src = processedDataUrl;
-                    await new Promise(resolve => img.onload = resolve);
+                    const img = new Image(); img.src = enhancedDataUrl;
+                    await new Promise(r => img.onload = r);
 
-                    const pxToMm = 0.264583;
-                    let imgWidthMm = img.width * pxToMm; let imgHeightMm = img.height * pxToMm;
-                    let orientation = imgWidthMm > imgHeightMm ? 'landscape' : 'portrait';
+                    const layoutMm = Math.max(img.width, img.height) * 0.264583; // Maintain original px size
+                    const isLandscape = img.width > img.height;
 
-                    if (layoutType === 'fit') {
-                        if (i === 0) doc = new jsPDF({ orientation: orientation, unit: 'mm', format: [imgWidthMm, imgHeightMm], dpi: 300 }); 
-                        else doc.addPage([imgWidthMm, imgHeightMm], orientation);
-                        doc.addImage(processedDataUrl, 'JPEG', 0, 0, imgWidthMm, imgHeightMm, undefined, 'FAST');
+                    if (i === 0) {
+                        doc = new jsPDF({ 
+                            orientation: isLandscape ? 'l' : 'p', 
+                            unit: 'mm', format: [img.width * 0.264583, img.height * 0.264583], // Fit to image
+                            dpi: 300 
+                        });
                     } else {
-                        let format = layoutType === 'a4' ? 'a4' : 'letter';
-                        if (i === 0) doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: format, dpi: 300 }); 
-                        else doc.addPage(format, 'portrait');
-
-                        let pdfPageWidth = doc.internal.pageSize.getWidth(); let pdfPageHeight = doc.internal.pageSize.getHeight();
-                        let imgRatio = img.width / img.height; let pageRatio = pdfPageWidth / pdfPageHeight;
-                        let finalWidth = pdfPageWidth; let finalHeight = pdfPageHeight;
-
-                        if (imgRatio > pageRatio) finalHeight = pdfPageWidth / imgRatio;
-                        else finalWidth = pdfPageHeight * imgRatio;
-
-                        let finalX = (pdfPageWidth - finalWidth) / 2; let finalY = (pdfPageHeight - finalHeight) / 2;
-                        doc.addImage(processedDataUrl, 'JPEG', finalX, finalY, finalWidth, finalHeight, undefined, 'FAST');
+                        doc.addPage([img.width * 0.264583, img.height * 0.264583], isLandscape ? 'l' : 'p');
                     }
+                    doc.addImage(enhancedDataUrl, 'JPEG', 0, 0, img.width * 0.264583, img.height * 0.264583, undefined, 'FAST');
 
-                    let currentPercent = Math.round(((i + 1) / totalImages) * 100);
-                    progressBar.style.width = `${currentPercent}%`; progressTextPercent.innerText = `${currentPercent}%`;
-                    progressTextItem.innerText = `${i + 1} / ${totalImages}`;
+                    // Free memory: Small delay allows GC
+                    await new Promise(r => setTimeout(r, 50));
                     
-                    await new Promise(r => setTimeout(r, 50)); 
+                    const pc = Math.round(((i + 1) / total) * 100);
+                    ui.pBar.style.width = `${pc}%`; ui.pTxtPercent.innerText = `${pc}%`; ui.pTxtItem.innerText = `${i + 1} / ${total}`;
                 }
 
-                const pdfDataUri = doc.output('datauristring');
-                const d = new Date();
-                const fileName = `RasScanner_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}_${d.getHours()}${d.getMinutes()}.pdf`;
+                // SAVE & STORE PDF DATA
+                const base64Pdf = doc.output('datauristring');
+                const now = new Date();
+                const id = "doc_" + Date.now();
+                const name = `RasScan_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${now.getHours()}${now.getMinutes()}.pdf`;
 
-                const newRecord = {
-                    id: "doc_" + Date.now(), name: fileName, date: d.toLocaleString(),
-                    pageCount: totalImages, thumb: firstPageThumb, pdfData: pdfDataUri
-                };
-
-                const transaction = db.transaction(["pdfs"], "readwrite");
-                transaction.objectStore("pdfs").put(newRecord);
+                const record = { id, name, date: now.toLocaleString(), pages: total, thumb, pdf: base64Pdf };
                 
-                transaction.oncomplete = () => {
-                    showToast('Saved successfully to History!', 'success');
+                const tx = db.transaction(["pdfs"], "readwrite");
+                tx.objectStore("pdfs").put(record);
+                
+                tx.oncomplete = () => {
+                    showToast('PDF Saved successfully!', 'success');
                     imagesArray = []; renderImages(); updateUI(); loadHistoryFiles();
-                    const mainScroll = document.getElementById('mainScrollView');
-                    mainScroll.scrollTo({ top: mainScroll.scrollHeight, behavior: 'smooth' });
+                    
+                    // AUTO-SCROLL TO HISTORY & HIGHLIGHT
+                    setTimeout(() => {
+                        const fileEl = document.getElementById(`list_${id}`);
+                        if(fileEl) {
+                            fileEl.classList.add('highlight-file');
+                            ui.mainScroll.scrollTo({ top: fileEl.offsetTop - 10, behavior: 'smooth' });
+                        }
+                    }, 300);
                 };
             } catch (error) { 
-                showToast('Error generating PDF', 'error'); 
+                showToast('Error generating PDF.', 'error'); 
+                console.error(error);
             } finally {
-                setTimeout(() => { loadingOverlay.classList.add('hidden'); loadingOverlay.classList.remove('flex'); }, 500);
+                setTimeout(() => ui.loading.classList.replace('flex', 'hidden'), 600);
             }
         }
 
         // ==========================================
-        // HISTORY & FILE MANAGEMENT
+        // HISTORY & FILE MANAGEMENT (RENAME/DELETE FIX)
         // ==========================================
         function loadHistoryFiles() {
             if(!db) return;
-            const historyList = document.getElementById('historyList');
-            const emptyHistoryState = document.getElementById('emptyHistoryState');
-            
-            db.transaction(["pdfs"], "readonly").objectStore("pdfs").getAll().onsuccess = (event) => {
-                const files = event.target.result.reverse();
-                historyList.innerHTML = '';
+            db.transaction(["pdfs"], "readonly").objectStore("pdfs").getAll().onsuccess = (e) => {
+                const files = e.target.result.reverse();
+                ui.historyList.innerHTML = '';
 
                 if(files.length === 0) {
-                    emptyHistoryState.classList.remove('hidden'); emptyHistoryState.classList.add('flex');
+                    ui.emptyHistory.classList.remove('hidden'); 
                 } else {
-                    emptyHistoryState.classList.add('hidden'); emptyHistoryState.classList.remove('flex');
-                    
+                    ui.emptyHistory.classList.add('hidden'); 
                     files.forEach(file => {
-                        const item = document.createElement('div');
-                        item.className = 'bg-white p-4 rounded-2xl shadow-sm border border-indigo-50 flex flex-col gap-3';
-                        item.innerHTML = `
+                        const el = document.createElement('div');
+                        el.id = `list_${file.id}`;
+                        el.className = 'bg-white p-5 rounded-3xl shadow-md border border-gray-100 flex flex-col gap-4 transition-all duration-300';
+                        el.innerHTML = `
                             <div class="flex items-center gap-4 cursor-pointer" onclick="viewPDF('${file.id}')">
-                                <div class="w-14 h-16 bg-gray-200 rounded-lg overflow-hidden shrink-0 shadow-sm border border-gray-200"><img src="${file.thumb}" class="w-full h-full object-cover"></div>
+                                <div class="w-16 h-18 bg-gray-100 rounded-xl overflow-hidden shrink-0 border border-gray-100 shadow-inner"><img src="${file.thumb}" class="w-full h-full object-cover"></div>
                                 <div class="flex-1 min-w-0">
-                                    <h4 class="font-bold text-gray-800 text-sm truncate">${file.name}</h4>
-                                    <p class="text-xs text-gray-500 mt-0.5">${file.date}</p>
-                                    <p class="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full inline-block mt-1">${file.pageCount} Pages</p>
+                                    <h4 class="font-bold text-gray-900 text-sm truncate" id="title_${file.id}">${file.name}</h4>
+                                    <p class="text-xs text-gray-400 mt-1">${file.date}</p>
+                                    <p class="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full inline-block mt-1.5">${file.pages} Pages</p>
                                 </div>
                             </div>
-                            <div class="grid grid-cols-5 gap-2 pt-2 border-t border-gray-50">
-                                <button onclick="viewPDF('${file.id}')" title="View" class="col-span-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 rounded-xl flex items-center justify-center transition-colors"><svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
-                                <button onclick="renamePDF('${file.id}', '${file.name}')" title="Rename" class="col-span-1 bg-orange-50 hover:bg-orange-100 text-orange-600 font-bold py-2 rounded-xl flex items-center justify-center transition-colors"><svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22h6a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v10"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10.4 12.6a2 2 0 1 1 3 3L8 21l-4 1 1-4Z"/></svg></button>
-                                <button onclick="sharePDF('${file.id}', '${file.name}')" title="Share" class="col-span-1 bg-green-50 hover:bg-green-100 text-green-600 font-bold py-2 rounded-xl flex items-center justify-center transition-colors"><svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg></button>
-                                <button onclick="saveToLocal('${file.id}')" title="Download" class="col-span-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold py-2 rounded-xl flex items-center justify-center transition-colors"><svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg></button>
-                                <button onclick="deletePDF('${file.id}')" title="Delete" class="col-span-1 bg-red-50 hover:bg-red-100 text-red-600 font-bold py-2 rounded-xl flex items-center justify-center transition-colors"><svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></button>
+                            <div class="grid grid-cols-5 gap-2 pt-3.5 border-t border-gray-100/70">
+                                <button onclick="viewPDF('${file.id}')" title="View" class="col-span-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl flex items-center justify-center active:scale-95 transition-all"><svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                                <button onclick="renamePDF('${file.id}', '${file.name}')" title="Rename" class="col-span-1 bg-orange-50 hover:bg-orange-100 text-orange-600 py-3 rounded-xl flex items-center justify-center active:scale-95 transition-all"><svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22h6a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v10"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10.4 12.6a2 2 0 1 1 3 3L8 21l-4 1 1-4Z"/></svg></button>
+                                <button onclick="sharePDF('${file.id}', '${file.name}')" title="Share" class="col-span-1 bg-green-50 hover:bg-green-100 text-green-700 py-3 rounded-xl flex items-center justify-center active:scale-95 transition-all"><svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg></button>
+                                <button onclick="saveToLocal('${file.id}')" title="Download" class="col-span-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 py-3 rounded-xl flex items-center justify-center active:scale-95 transition-all"><svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg></button>
+                                <button onclick="deletePDF('${file.id}')" title="Delete" class="col-span-1 bg-red-50 hover:bg-red-100 text-red-600 py-3 rounded-xl flex items-center justify-center active:scale-95 transition-all"><svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
                             </div>
                         `;
-                        historyList.appendChild(item);
+                        ui.historyList.appendChild(el);
                     });
                 }
             };
         }
 
-        // PDF.JS VIEWER 
-        function viewPDF(id) {
-            db.transaction(["pdfs"], "readonly").objectStore("pdfs").get(id).onsuccess = (e) => {
-                const file = e.target.result;
-                if(file && file.pdfData) {
-                    document.getElementById('previewTitle').innerText = file.name;
-                    document.getElementById('pdfPreviewModal').classList.remove('hidden');
-                    document.getElementById('pdfPreviewModal').classList.add('flex');
-                    
-                    const container = document.getElementById('pdfRenderContainer');
-                    container.innerHTML = '<div class="text-gray-500 font-bold mt-10">Rendering PDF...</div>';
-
-                    try {
-                        const base64Data = file.pdfData.split(',')[1];
-                        const pdfData = atob(base64Data);
-                        const uint8Array = new Uint8Array(pdfData.length);
-                        for (let i = 0; i < pdfData.length; i++) { uint8Array[i] = pdfData.charCodeAt(i); }
-
-                        pdfjsLib.getDocument({data: uint8Array}).promise.then(pdf => {
-                            container.innerHTML = ''; 
-                            for(let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-                                pdf.getPage(pageNum).then(page => {
-                                    const viewport = page.getViewport({scale: 1.5}); 
-                                    const canvas = document.createElement('canvas');
-                                    const context = canvas.getContext('2d');
-                                    canvas.height = viewport.height; canvas.width = viewport.width;
-                                    canvas.className = 'w-full max-w-lg h-auto shadow-md mb-3 bg-white';
-                                    container.appendChild(canvas);
-                                    page.render({canvasContext: context, viewport: viewport});
-                                });
-                            }
-                        }).catch(err => {
-                            container.innerHTML = '<div class="text-red-500 mt-10">Failed to render PDF preview.</div>';
-                        });
-                    } catch (err) { container.innerHTML = '<div class="text-red-500 mt-10">Failed to read PDF data.</div>'; }
-                }
-            };
-        }
-
-        function closePdfPreview() {
-            document.getElementById('pdfPreviewModal').classList.add('hidden');
-            document.getElementById('pdfPreviewModal').classList.remove('flex');
-            document.getElementById('pdfRenderContainer').innerHTML = ''; 
+        function deletePDF(id) {
+            if(confirm("Confirm to delete this PDF forever?")) {
+                const tx = db.transaction(["pdfs"], "readwrite");
+                tx.objectStore("pdfs").delete(id);
+                tx.oncomplete = () => { 
+                    loadHistoryFiles(); 
+                    showToast('Document deleted.', 'info'); 
+                };
+                tx.onerror = () => showToast('Delete failed.', 'error');
+            }
         }
 
         function renamePDF(id, currentName) {
-            let baseName = currentName.endsWith('.pdf') ? currentName.slice(0, -4) : currentName;
-            let newName = prompt("Enter new name for the document:", baseName);
-            if(newName && newName.trim() !== "" && newName !== baseName) {
+            let baseName = currentName.toLowerCase().endsWith('.pdf') ? currentName.slice(0, -4) : currentName;
+            let newName = prompt("Enter new filename:", baseName);
+            if(newName && newName.trim() !== "" && newName.trim() !== baseName) {
+                newName = newName.trim();
                 if(!newName.toLowerCase().endsWith('.pdf')) newName += '.pdf';
-                const store = db.transaction(["pdfs"], "readwrite").objectStore("pdfs");
+                const tx = db.transaction(["pdfs"], "readwrite");
+                const store = tx.objectStore("pdfs");
                 store.get(id).onsuccess = (e) => {
                     const data = e.target.result; data.name = newName;
-                    store.put(data).onsuccess = () => { loadHistoryFiles(); showToast('Document renamed', 'success'); };
+                    store.put(data).onsuccess = () => { loadHistoryFiles(); showToast('Renamed!', 'success'); };
                 };
             }
         }
 
-        // SHARE FALLBACK TO DOWNLOAD
-        async function sharePDF(id, filename) {
+        function sharePDF(id, filename) {
             db.transaction(["pdfs"], "readonly").objectStore("pdfs").get(id).onsuccess = async (e) => {
                 const file = e.target.result;
-                if(file && file.pdfData) {
-                    try {
-                        const blob = dataURItoBlob(file.pdfData);
-                        const fileObj = new File([blob], filename, { type: 'application/pdf' });
-                        if (navigator.canShare && navigator.canShare({ files: [fileObj] })) {
-                            await navigator.share({ files: [fileObj], title: filename, text: 'Document scanned with RasScanner.' });
-                            showToast('Shared successfully!', 'success');
-                        } else throw new Error("ShareNotSupported");
-                    } catch (err) { 
-                        if(err.name !== 'AbortError') {
-                            showToast('App blocked direct share. Downloading instead...', 'info');
-                            setTimeout(() => { saveToLocal(id); }, 1500);
-                        }
-                    }
-                }
+                if(!file || !navigator.share) { showToast('Sharing not supported on this device.', 'error'); return; }
+                try {
+                    const ia = new Uint8Array(atob(file.pdf.split(',')[1]).split('').map(c=>c.charCodeAt(0)));
+                    const fileObj = new File([ia], filename, { type: 'application/pdf' });
+                    if (navigator.canShare && navigator.canShare({ files: [fileObj] })) {
+                        await navigator.share({ files: [fileObj], title: filename });
+                        showToast('Shared successfully!', 'success');
+                    } else showToast('File sharing failed.', 'error');
+                } catch (err) { if(err.name !== 'AbortError') showToast('Sharing error.', 'error'); }
             };
         }
 
         function saveToLocal(id) {
             db.transaction(["pdfs"], "readonly").objectStore("pdfs").get(id).onsuccess = (e) => {
                 const file = e.target.result;
-                if(file && file.pdfData) {
-                    const link = document.createElement('a');
-                    link.href = file.pdfData; link.download = file.name; 
+                if(file) {
+                    const link = document.createElement('a'); link.href = file.pdf; link.download = file.name; 
                     document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                    showToast('Starting download...', 'success');
                 }
             };
         }
 
-        function dataURItoBlob(dataURI) {
-            const splitDataURI = dataURI.split(',');
-            const byteString = splitDataURI[0].indexOf('base64') >= 0 ? atob(splitDataURI[1]) : decodeURI(splitDataURI[1]);
-            const mimeString = splitDataURI[0].split(':')[1].split(';')[0];
-            const ia = new Uint8Array(byteString.length);
-            for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
-            return new Blob([ia], { type: mimeString });
+        // ==========================================
+        // PRO PDF VIEWER (WITH ZOOM & PAGE NUMBER)
+        // ==========================================
+        let currentViewerState = { scale: 1, baseW: 0, touching: false, lastD: 0, lastX: 0, lastY: 0 };
+        
+        function viewPDF(id) {
+            db.transaction(["pdfs"], "readonly").objectStore("pdfs").get(id).onsuccess = (e) => {
+                const file = e.target.result;
+                if(!file) return;
+                ui.pdfTitle.innerText = file.name;
+                ui.pdfPreview.classList.replace('hidden', 'flex');
+                ui.pdfPagesList.innerHTML = ''; 
+                ui.pdfPagesList.style.transform = `scale(1) translate(0px, 0px)`; // Reset zoom
+
+                const loading = document.getElementById('pdfLoadingText');
+                loading.classList.replace('hidden', 'flex');
+
+                try {
+                    const ia = new Uint8Array(atob(file.pdf.split(',')[1]).split('').map(c=>c.charCodeAt(0)));
+                    pdfjsLib.getDocument({data: ia}).promise.then(pdf => {
+                        loading.classList.replace('flex', 'hidden');
+                        ui.pdfIndicator.innerText = `1 / ${pdf.numPages}`;
+                        currentViewerState.scale = 1; // Reset zoom state
+
+                        for(let num=1; num<=pdf.numPages; num++) {
+                            const container = document.createElement('div');
+                            container.className = 'w-full flex items-center justify-center p-1';
+                            ui.pdfPagesList.appendChild(container);
+
+                            pdf.getPage(num).then(page => {
+                                const vp = page.getViewport({scale: 1.5}); // base high scale
+                                const canvas = document.createElement('canvas');
+                                const ctx = canvas.getContext('2d');
+                                canvas.height = vp.height; canvas.width = vp.width;
+                                canvas.className = 'shadow-lg border border-gray-100 rounded bg-white w-full max-w-[380px] h-auto transition-opacity';
+                                container.appendChild(canvas);
+                                page.render({canvasContext: ctx, viewport: vp});
+                            });
+                        }
+                        setupViewerInteractions(); // Enable Pinch to Zoom
+                    }).catch(err => {
+                        loading.innerText = 'Render failed.';
+                        console.error(err);
+                    });
+                } catch (err) { loading.innerText = 'Failed to load PDF.'; }
+            };
         }
 
-        function deletePDF(id) {
-            if(confirm("Delete this document forever?")) {
-                db.transaction(["pdfs"], "readwrite").objectStore("pdfs").delete(id).oncomplete = () => { loadHistoryFiles(); showToast('Document deleted', 'info'); };
+        function closePdfPreview() {
+            ui.pdfPreview.classList.replace('flex', 'hidden');
+            ui.pdfPagesList.innerHTML = '';
+            ui.pdfContainer.removeEventListener('touchstart', handleTouchStart);
+            ui.pdfContainer.removeEventListener('touchmove', handleTouchMove);
+            ui.pdfContainer.removeEventListener('touchend', handleTouchEnd);
+        }
+
+        // PINCH TO ZOOM LOGIC
+        function setupViewerInteractions() {
+            const cont = ui.pdfContainer;
+            currentViewerState.lastD = 0; currentViewerState.scale = 1;
+
+            cont.addEventListener('touchstart', handleTouchStart, false);
+            cont.addEventListener('touchmove', handleTouchMove, false);
+            cont.addEventListener('touchend', handleTouchEnd, false);
+            
+            // Handle page number update on scroll
+            cont.addEventListener('scroll', () => {
+                const elements = document.querySelectorAll('#pdfPagesList > div');
+                const contY = cont.getBoundingClientRect().y;
+                for(let i=0; i<elements.length; i++) {
+                    const elY = elements[i].getBoundingClientRect().y;
+                    if (elY > contY - 200 && elY < contY + 200) {
+                        const maxP = elements.length;
+                        ui.pdfIndicator.innerText = `${i+1} / ${maxP}`;
+                        break;
+                    }
+                }
+            });
+        }
+
+        function handleTouchStart(e) {
+            if (e.touches.length === 2) {
+                currentViewerState.touching = true;
+                currentViewerState.lastD = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+            }
+        }
+        function handleTouchMove(e) {
+            if (currentViewerState.touching && e.touches.length === 2) {
+                e.preventDefault();
+                const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+                if (currentViewerState.lastD > 0) {
+                    let newScale = currentViewerState.scale + (dist - currentViewerState.lastD) * 0.007;
+                    newScale = Math.min(Math.max(1, newScale), 4); // Limit zoom 1x to 4x
+                    currentViewerState.scale = newScale;
+                    ui.pdfPagesList.style.transform = `scale(${currentScale}) translate(0px, 0px)`;
+                }
+                currentViewerState.lastD = dist;
+            }
+        }
+        function handleTouchEnd(e) {
+            if (e.touches.length < 2) {
+                currentViewerState.touching = false;
+                currentViewerState.lastD = 0;
             }
         }
 
+        // ==========================================
+        // UI HELPERS
+        // ==========================================
         function showToast(message, type = 'info') {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
-            let icon = type === 'error' ? `<svg class="w-5 h-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>` : `<svg class="w-5 h-5 text-emerald-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
-            toast.className = `toast-enter flex items-center gap-3 px-4 py-3.5 rounded-2xl shadow-xl text-white text-sm font-bold bg-gray-900`;
+            let icon = type==='error' ? `<svg class="w-6 h-6 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>` : `<svg class="w-6 h-6 text-emerald-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+            toast.className = `toast-enter flex items-center gap-3.5 px-5 py-4 rounded-2xl shadow-xl text-white text-sm font-bold bg-gray-900`;
             toast.innerHTML = `${icon}<span>${message}</span>`;
             container.appendChild(toast);
-            setTimeout(() => { toast.classList.replace('toast-enter', 'toast-exit'); setTimeout(() => toast.remove(), 300); }, 3000);
+            setTimeout(() => { toast.classList.replace('toast-enter', 'toast-exit'); setTimeout(()=>toast.remove(), 300); }, 3000);
         }
     </script>
 </body>
