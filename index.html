@@ -6,7 +6,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#4F46E5">
-    <title>RasScanner Pro Max</title>
+    <title>RasScanner Pro Max v5</title>
     
     <script src="tailwindcss.js"></script>
     <script src="jspdf.min.js"></script>
@@ -25,21 +25,29 @@
         .toggle-checkbox:checked { right: 0; border-color: #4F46E5; }
         .toggle-checkbox:checked + .toggle-label { background-color: #4F46E5; }
         
-        /* Native Scrolling for PDF Viewer */
+        /* Native Scrolling & Zoom for PDF Viewer */
         #pdfViewerContainer { 
             position: relative; overflow: auto; 
             width: 100%; height: 100%; 
             background-color: #d1d5db;
+            scroll-behavior: smooth;
         }
-        #pdfPagesList { text-align: center; padding: 16px; }
+        #pdfPagesList { 
+            text-align: center; 
+            padding: 16px; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
         .pdf-canvas-page {
-            display: inline-block;
-            width: 100%; 
+            display: block;
+            width: 100%; /* controlled by JS for zooming */
             max-width: none !important;
             box-shadow: 0 10px 25px rgba(0,0,0,0.15);
             margin-bottom: 16px;
             background-color: white;
             transition: width 0.1s ease-out; 
+            transform-origin: center center;
         }
 
         .highlight-file { animation: highlightGlow 2s ease-out; }
@@ -210,7 +218,7 @@
             </header>
             
             <div id="pdfViewerContainer" class="flex-1">
-                <div id="pdfLoadingText" class="absolute inset-0 flex items-center justify-center text-gray-500 font-bold z-10">Rendering PDF...</div>
+                <div id="pdfLoadingText" class="absolute inset-0 flex items-center justify-center text-gray-500 font-bold z-10">Rendering HD PDF...</div>
                 <div id="pdfPagesList">
                     </div>
             </div>
@@ -238,7 +246,7 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
         // ==========================================
-        // DATABASE SETUP (IndexedDB) - Extended robust setup
+        // DATABASE SETUP (IndexedDB) 
         // ==========================================
         let db;
         const dbName = "RasScannerDB_V5"; 
@@ -393,10 +401,10 @@
                     const pdf = await pdfjsLib.getDocument({data: typedarray}).promise;
 
                     if (mode === 'scan') {
-                        // Extract all pages as images into the Scanner Grid
+                        // Extract all pages as images into the Scanner Grid at HIGH RES
                         for(let i = 1; i <= pdf.numPages; i++) {
                             const page = await pdf.getPage(i);
-                            const viewport = page.getViewport({scale: 2.0}); 
+                            const viewport = page.getViewport({scale: 3.0}); // Extremely High Res Extraction
                             const canvas = document.createElement('canvas');
                             canvas.width = viewport.width; 
                             canvas.height = viewport.height;
@@ -420,7 +428,7 @@
                         updateUI();
                         showToast("PDF imported for scanning!", "success");
                     } else {
-                        // DIRECT IMPORT AS READER (Saves immediately to DB)
+                        // DIRECT IMPORT AS READER (Saves exactly the original file!)
                         const page = await pdf.getPage(1);
                         const viewport = page.getViewport({scale: 0.5});
                         const canvas = document.createElement('canvas');
@@ -429,7 +437,7 @@
                         await page.render({canvasContext: canvas.getContext('2d'), viewport: viewport}).promise;
                         const thumbUrl = canvas.toDataURL('image/jpeg', 0.8);
 
-                        // We must convert the actual file to Base64 to save in IndexedDB
+                        // Convert original file to Base64 to save in IndexedDB
                         const b64Reader = new FileReader();
                         b64Reader.onload = function() {
                             const record = {
@@ -441,7 +449,6 @@
                                 pdf: b64Reader.result
                             };
                             
-                            // PROPER TRANSACTION LOGIC TO FIX SAVING BUG
                             const transaction = db.transaction(["pdfs"], "readwrite");
                             const store = transaction.objectStore("pdfs");
                             store.put(record);
@@ -452,14 +459,12 @@
                             };
                             
                             transaction.onerror = (err) => {
-                                console.error("DB Save Error:", err);
                                 showToast("Failed to save PDF to database.", "error");
                             };
                         };
                         b64Reader.readAsDataURL(file);
                     }
                 } catch(e) { 
-                    console.error("PDF Processing Error:", e);
                     showToast("Failed to process PDF.", "error"); 
                 } finally { 
                     ui.loading.classList.replace('flex', 'hidden'); 
@@ -551,7 +556,7 @@
         }
 
         // ==========================================
-        // PRO IMAGE PROCESSING: MAGIC PRO WARMTH & SMART CROP
+        // PRO IMAGE PROCESSING: PERFECT ORIGINAL & SMART CROP
         // ==========================================
         async function processDocumentImage(dataUrl, filterType, applyAutoCrop) {
             return new Promise((resolve) => {
@@ -560,7 +565,8 @@
                     let targetWidth = img.width; 
                     let targetHeight = img.height;
 
-                    const MAX_DIMENSION = (filterType === 'none') ? 4000 : 3000; 
+                    // If Original/No Filter, keep resolution extremely high (5000px) so no quality is lost
+                    const MAX_DIMENSION = (filterType === 'none') ? 5000 : 3000; 
                     
                     if (filterType !== 'none' && Math.max(targetWidth, targetHeight) < 1500) { 
                         targetWidth *= 2; 
@@ -687,13 +693,13 @@
                         ctx.putImageData(imageData, 0, 0);
                     }
 
-                    let quality = (filterType === 'none') ? 0.98 : 0.95;
+                    // No Filter stays pristine quality
+                    let quality = (filterType === 'none') ? 1.0 : 0.95;
                     resolve(canvas.toDataURL('image/jpeg', quality));
                 };
                 
                 img.onerror = () => {
-                    console.error("Failed to load image for processing");
-                    resolve(dataUrl); // fallback to original if error occurs
+                    resolve(dataUrl); 
                 }
                 
                 img.src = dataUrl;
@@ -708,6 +714,7 @@
             
             ui.loading.classList.replace('hidden', 'flex'); 
             document.getElementById('loadingTitle').innerText = "Creating Magic...";
+            document.getElementById('loadingDesc').innerText = "Please wait, enhancing resolution and saving safely.";
             ui.pBar.style.width = '0%'; 
             ui.pTxtPercent.innerText = '0%';
             ui.pTxtItem.innerText = `0 / ${imagesArray.length}`;
@@ -731,7 +738,7 @@
                     img.src = enhancedDataUrl;
                     await new Promise((resolve) => {
                         img.onload = resolve;
-                        img.onerror = resolve; // Continue even if one image fails slightly
+                        img.onerror = resolve; 
                     });
 
                     const isLandscape = img.width > img.height;
@@ -749,7 +756,6 @@
                     
                     doc.addImage(enhancedDataUrl, 'JPEG', 0, 0, img.width * 0.264583, img.height * 0.264583, undefined, 'FAST');
 
-                    // Small pause to free memory in WebView
                     await new Promise(r => setTimeout(r, 50));
                     
                     const pc = Math.round(((i + 1) / total) * 100);
@@ -794,13 +800,7 @@
                     }, 400);
                 };
 
-                transaction.onerror = (err) => {
-                    console.error("DB Save Error:", err);
-                    showToast('Database error. File might be too large.', 'error');
-                };
-
             } catch (error) { 
-                console.error("PDF Generation Error:", error);
                 showToast('Error generating PDF.', 'error'); 
             } finally { 
                 setTimeout(() => ui.loading.classList.replace('flex', 'hidden'), 600); 
@@ -864,10 +864,6 @@
                     loadHistoryFiles(); 
                     showToast('Document deleted.', 'info'); 
                 };
-                
-                tx.onerror = () => {
-                    showToast('Failed to delete.', 'error');
-                }
             }
         }
 
@@ -935,7 +931,7 @@
         }
 
         // ==========================================
-        // PRO PDF VIEWER (NATIVE SCROLL & SMOOTH ZOOM)
+        // PRO PDF VIEWER (ULTRA HD VECTOR ZOOM)
         // ==========================================
         let pinchStartWidth = 100;
         let currentViewerZoom = 100;
@@ -964,13 +960,14 @@
 
                         for(let num=1; num<=pdf.numPages; num++) {
                             pdf.getPage(num).then(page => {
-                                const vp = page.getViewport({scale: 1.5}); 
+                                // RENDER AT ULTRA HD (Scale 4.0) to keep vectors sharp when zoomed!
+                                const vp = page.getViewport({scale: 4.0}); 
                                 const canvas = document.createElement('canvas');
                                 const ctx = canvas.getContext('2d');
                                 canvas.height = vp.height; 
                                 canvas.width = vp.width;
                                 canvas.className = 'pdf-canvas-page';
-                                canvas.style.width = '100%';
+                                canvas.style.width = '100%'; // Scales down to fit screen initially
                                 ui.pdfPagesList.appendChild(canvas);
                                 page.render({canvasContext: ctx, viewport: vp});
                             });
@@ -988,9 +985,11 @@
         function closePdfPreview() {
             ui.pdfPreview.classList.replace('flex', 'hidden');
             ui.pdfPagesList.innerHTML = '';
-            ui.pdfContainer.removeEventListener('touchstart', handleTouchStart);
-            ui.pdfContainer.removeEventListener('touchmove', handleTouchMove);
-            ui.pdfContainer.removeEventListener('touchend', handleTouchEnd);
+            
+            const cont = ui.pdfContainer;
+            cont.removeEventListener('touchstart', handleTouchStart);
+            cont.removeEventListener('touchmove', handleTouchMove);
+            cont.removeEventListener('touchend', handleTouchEnd);
         }
 
         function setupViewerInteractions() {
