@@ -6,7 +6,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#4F46E5">
-    <title>RasScanner Pro v4.5</title>
+    <title>RasScanner Pro Max</title>
     
     <script src="tailwindcss.js"></script>
     <script src="jspdf.min.js"></script>
@@ -34,12 +34,12 @@
         #pdfPagesList { text-align: center; padding: 16px; }
         .pdf-canvas-page {
             display: inline-block;
-            width: 100%; /* Default width */
+            width: 100%; 
             max-width: none !important;
             box-shadow: 0 10px 25px rgba(0,0,0,0.15);
             margin-bottom: 16px;
             background-color: white;
-            transition: width 0.1s ease-out; /* Smooth pinch zoom */
+            transition: width 0.1s ease-out; 
         }
 
         .highlight-file { animation: highlightGlow 2s ease-out; }
@@ -141,6 +141,8 @@
                 <span>SCAN & SAVE PDF</span>
             </button>
 
+            <div class="w-full h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent my-8"></div>
+
             <div id="historySection" class="relative">
                 <h2 class="text-2xl font-black text-gray-800 mb-5 px-1 flex items-center gap-2.5">
                     <svg class="w-7 h-7 text-indigo-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M15 18a3 3 0 1 0-6 0"/><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M12 13v5"/></svg>
@@ -236,25 +238,32 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
         // ==========================================
-        // DATABASE SETUP (IndexedDB)
+        // DATABASE SETUP (IndexedDB) - Extended robust setup
         // ==========================================
         let db;
-        const dbName = "RasScannerDBv5"; 
+        const dbName = "RasScannerDB_V5"; 
         
         function initDB() {
             const request = indexedDB.open(dbName, 1);
-            request.onerror = (e) => showToast("Storage error. PDFs might not save.", "error");
-            request.onupgradeneeded = (e) => {
-                db = e.target.result;
+            
+            request.onerror = (event) => {
+                console.error("Database error: ", event.target.error);
+                showToast("Local storage error. PDFs might not save correctly.", "error");
+            };
+            
+            request.onupgradeneeded = (event) => {
+                db = event.target.result;
                 if (!db.objectStoreNames.contains("pdfs")) {
                     db.createObjectStore("pdfs", { keyPath: "id" });
                 }
             };
-            request.onsuccess = (e) => {
-                db = e.target.result;
+            
+            request.onsuccess = (event) => {
+                db = event.target.result;
                 loadHistoryFiles();
             };
         }
+        
         initDB();
 
         // ==========================================
@@ -292,36 +301,57 @@
         // ==========================================
         // CAMERA HANDLING
         // ==========================================
-        let currentStream = null; let useFrontCamera = false;
+        let currentStream = null;
+        let useFrontCamera = false;
+
         async function openCustomCamera() {
             try {
-                currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: useFrontCamera ? "user" : "environment", width: { ideal: 3000 } } });
+                currentStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: useFrontCamera ? "user" : "environment", width: { ideal: 3000 } } 
+                });
                 ui.cameraVideo.srcObject = currentStream;
                 ui.cameraOverlay.classList.replace('hidden', 'flex');
-            } catch (err) { ui.cameraIn.click(); }
+            } catch (err) { 
+                showToast("Direct camera blocked, using gallery camera instead.", "info");
+                ui.cameraIn.click(); 
+            }
         }
+
         function closeCustomCamera() {
             if(currentStream) currentStream.getTracks().forEach(track => track.stop());
             ui.cameraOverlay.classList.replace('flex', 'hidden');
         }
+
         function switchCamera() {
-            useFrontCamera = !useFrontCamera; closeCustomCamera(); setTimeout(openCustomCamera, 200);
+            useFrontCamera = !useFrontCamera; 
+            closeCustomCamera(); 
+            setTimeout(openCustomCamera, 200);
         }
+
         function capturePhoto() {
-            const video = ui.cameraVideo; const canvas = ui.cameraCanvas;
-            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+            const video = ui.cameraVideo; 
+            const canvas = ui.cameraCanvas;
+            canvas.width = video.videoWidth; 
+            canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
             
             const gridThumbCanvas = document.createElement('canvas');
             const gTctx = gridThumbCanvas.getContext('2d');
-            gridThumbCanvas.width = 150; gridThumbCanvas.height = Math.floor(150 * (video.videoHeight/video.videoWidth));
+            gridThumbCanvas.width = 150; 
+            gridThumbCanvas.height = Math.floor(150 * (video.videoHeight/video.videoWidth));
             gTctx.drawImage(canvas, 0, 0, gridThumbCanvas.width, gridThumbCanvas.height);
 
             imagesArray.push({ 
-                id: Math.random().toString(36).substring(2, 9), file: null, 
-                dataUrl: canvas.toDataURL('image/jpeg', 0.95), thumbUrl: gridThumbCanvas.toDataURL('image/jpeg', 0.8) 
+                id: Math.random().toString(36).substring(2, 9), 
+                file: null, 
+                dataUrl: canvas.toDataURL('image/jpeg', 0.95), 
+                thumbUrl: gridThumbCanvas.toDataURL('image/jpeg', 0.8) 
             });
-            closeCustomCamera(); renderImages(); updateUI();
+            
+            closeCustomCamera(); 
+            renderImages(); 
+            updateUI();
+            showToast("Photo captured!", "success");
         }
 
         // ==========================================
@@ -343,6 +373,7 @@
             ui.pdfModal.classList.replace('flex', 'hidden');
         }
 
+        // Function: Handle PDF Import logic (Scan vs Read Directly)
         async function executePdfImport(mode) {
             ui.pdfModal.classList.replace('flex', 'hidden');
             if(!tempImportPdfFile) return;
@@ -352,7 +383,7 @@
 
             ui.loading.classList.replace('hidden', 'flex');
             document.getElementById('loadingTitle').innerText = "Importing PDF...";
-            document.getElementById('loadingDesc').innerText = "Please wait, reading pages.";
+            document.getElementById('loadingDesc').innerText = "Please wait while we process the document.";
 
             const fileReader = new FileReader();
             
@@ -362,50 +393,77 @@
                     const pdf = await pdfjsLib.getDocument({data: typedarray}).promise;
 
                     if (mode === 'scan') {
-                        // Extract pages to images for scanning
-                        for(let i=1; i<=pdf.numPages; i++) {
+                        // Extract all pages as images into the Scanner Grid
+                        for(let i = 1; i <= pdf.numPages; i++) {
                             const page = await pdf.getPage(i);
-                            const viewport = page.getViewport({scale: 2.0}); // High res extraction
+                            const viewport = page.getViewport({scale: 2.0}); 
                             const canvas = document.createElement('canvas');
-                            canvas.width = viewport.width; canvas.height = viewport.height;
+                            canvas.width = viewport.width; 
+                            canvas.height = viewport.height;
                             await page.render({canvasContext: canvas.getContext('2d'), viewport: viewport}).promise;
                             
                             const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
                             
                             const tCanvas = document.createElement('canvas');
-                            tCanvas.width = 150; tCanvas.height = Math.floor(150 * (canvas.height/canvas.width));
-                            tCanvas.getContext('2d').drawImage(canvas, 0,0, tCanvas.width, tCanvas.height);
+                            tCanvas.width = 150; 
+                            tCanvas.height = Math.floor(150 * (canvas.height/canvas.width));
+                            tCanvas.getContext('2d').drawImage(canvas, 0, 0, tCanvas.width, tCanvas.height);
                             
                             imagesArray.push({
                                 id: Math.random().toString(36).substring(2, 9),
-                                file: null, dataUrl: dataUrl, thumbUrl: tCanvas.toDataURL('image/jpeg', 0.8)
+                                file: null, 
+                                dataUrl: dataUrl, 
+                                thumbUrl: tCanvas.toDataURL('image/jpeg', 0.8)
                             });
                         }
-                        renderImages(); updateUI();
+                        renderImages(); 
+                        updateUI();
                         showToast("PDF imported for scanning!", "success");
                     } else {
-                        // Direct to Reader History
+                        // DIRECT IMPORT AS READER (Saves immediately to DB)
                         const page = await pdf.getPage(1);
                         const viewport = page.getViewport({scale: 0.5});
                         const canvas = document.createElement('canvas');
-                        canvas.width = viewport.width; canvas.height = viewport.height;
+                        canvas.width = viewport.width; 
+                        canvas.height = viewport.height;
                         await page.render({canvasContext: canvas.getContext('2d'), viewport: viewport}).promise;
                         const thumbUrl = canvas.toDataURL('image/jpeg', 0.8);
 
+                        // We must convert the actual file to Base64 to save in IndexedDB
                         const b64Reader = new FileReader();
                         b64Reader.onload = function() {
                             const record = {
-                                id: "doc_" + Date.now(), name: file.name, date: new Date().toLocaleString(),
-                                pages: pdf.numPages, thumb: thumbUrl, pdf: b64Reader.result
+                                id: "doc_" + Date.now(), 
+                                name: file.name, 
+                                date: new Date().toLocaleString(),
+                                pages: pdf.numPages, 
+                                thumb: thumbUrl, 
+                                pdf: b64Reader.result
                             };
-                            db.transaction(["pdfs"], "readwrite").objectStore("pdfs").put(record).oncomplete = () => {
-                                loadHistoryFiles(); showToast("Saved to Reader History!", "success");
+                            
+                            // PROPER TRANSACTION LOGIC TO FIX SAVING BUG
+                            const transaction = db.transaction(["pdfs"], "readwrite");
+                            const store = transaction.objectStore("pdfs");
+                            store.put(record);
+                            
+                            transaction.oncomplete = () => {
+                                loadHistoryFiles(); 
+                                showToast("Saved directly to Reader History!", "success");
+                            };
+                            
+                            transaction.onerror = (err) => {
+                                console.error("DB Save Error:", err);
+                                showToast("Failed to save PDF to database.", "error");
                             };
                         };
                         b64Reader.readAsDataURL(file);
                     }
-                } catch(e) { showToast("Failed to process PDF.", "error"); }
-                finally { ui.loading.classList.replace('flex', 'hidden'); }
+                } catch(e) { 
+                    console.error("PDF Processing Error:", e);
+                    showToast("Failed to process PDF.", "error"); 
+                } finally { 
+                    ui.loading.classList.replace('flex', 'hidden'); 
+                }
             };
             fileReader.readAsArrayBuffer(file);
         }
@@ -413,9 +471,10 @@
         async function processFiles(files) {
             if (!files || files.length === 0) return;
             const filesArray = Array.from(files);
+            
             ui.loading.classList.replace('hidden', 'flex');
             document.getElementById('loadingTitle').innerText = "Loading Images...";
-            document.getElementById('loadingDesc').innerText = "Please wait, reading files.";
+            document.getElementById('loadingDesc').innerText = `Processing ${filesArray.length} file(s). Please wait.`;
 
             try {
                 for (let file of filesArray) {
@@ -425,25 +484,38 @@
                             reader.onload = (event) => resolve(event.target.result);
                             reader.readAsDataURL(file);
                         });
-                        const img = new Image(); img.src = dataUrl;
+                        
+                        const img = new Image(); 
+                        img.src = dataUrl;
                         await new Promise(r => img.onload = r);
 
                         const gridThumbCanvas = document.createElement('canvas');
                         const gTctx = gridThumbCanvas.getContext('2d');
-                        gridThumbCanvas.width = 150; gridThumbCanvas.height = Math.floor(150 * (img.height/img.width));
+                        gridThumbCanvas.width = 150; 
+                        gridThumbCanvas.height = Math.floor(150 * (img.height/img.width));
                         gTctx.drawImage(img, 0, 0, gridThumbCanvas.width, gridThumbCanvas.height);
                         
-                        imagesArray.push({ id: Math.random().toString(36).substring(2, 9), file: file, dataUrl: dataUrl, thumbUrl: gridThumbCanvas.toDataURL('image/jpeg', 0.7) });
+                        imagesArray.push({ 
+                            id: Math.random().toString(36).substring(2, 9), 
+                            file: file, 
+                            dataUrl: dataUrl, 
+                            thumbUrl: gridThumbCanvas.toDataURL('image/jpeg', 0.7) 
+                        });
                     }
                 }
-                renderImages(); updateUI();
-            } catch (error) { showToast('Failed to load some images', 'error'); } 
-            finally { ui.loading.classList.replace('flex', 'hidden'); }
+                renderImages(); 
+                updateUI();
+            } catch (error) { 
+                showToast('Failed to load some images', 'error'); 
+            } finally { 
+                ui.loading.classList.replace('flex', 'hidden'); 
+            }
         }
 
         function renderImages() {
             ui.grid.innerHTML = '';
             if (imagesArray.length === 0) return;
+            
             imagesArray.forEach((imgObj, index) => {
                 const item = document.createElement('div');
                 item.className = 'group relative aspect-[3/4] rounded-2xl overflow-hidden bg-white shadow-lg border border-gray-100 p-1.5 transition-all';
@@ -457,13 +529,23 @@
         }
 
         function removeImage(id) { imagesArray = imagesArray.filter(img => img.id !== id); renderImages(); updateUI(); }
-        function clearAllImages() { if(confirm('Clear current scan grid?')) { imagesArray = []; renderImages(); updateUI(); } }
+        
+        function clearAllImages() { 
+            if(confirm('Clear current scan grid?')) { 
+                imagesArray = []; 
+                renderImages(); 
+                updateUI(); 
+            } 
+        }
+        
         function updateUI() {
             if (imagesArray.length > 0) { 
-                ui.topBtn.classList.replace('hidden', 'flex'); ui.empty.classList.add('hidden');
+                ui.topBtn.classList.replace('hidden', 'flex'); 
+                ui.empty.classList.add('hidden');
                 ui.genBtn.classList.replace('hidden', 'flex'); 
             } else { 
-                ui.topBtn.classList.replace('flex', 'hidden'); ui.empty.classList.remove('hidden');
+                ui.topBtn.classList.replace('flex', 'hidden'); 
+                ui.empty.classList.remove('hidden');
                 ui.genBtn.classList.replace('flex', 'hidden');
             }
         }
@@ -475,28 +557,53 @@
             return new Promise((resolve) => {
                 const img = new Image();
                 img.onload = () => {
-                    let targetWidth = img.width; let targetHeight = img.height;
+                    let targetWidth = img.width; 
+                    let targetHeight = img.height;
 
                     const MAX_DIMENSION = (filterType === 'none') ? 4000 : 3000; 
-                    if (filterType !== 'none' && Math.max(targetWidth, targetHeight) < 1500) { targetWidth *= 2; targetHeight *= 2; }
+                    
+                    if (filterType !== 'none' && Math.max(targetWidth, targetHeight) < 1500) { 
+                        targetWidth *= 2; 
+                        targetHeight *= 2; 
+                    }
+                    
                     if (Math.max(targetWidth, targetHeight) > MAX_DIMENSION) {
                         const ratio = MAX_DIMENSION / Math.max(targetWidth, targetHeight);
-                        targetWidth *= ratio; targetHeight *= ratio;
+                        targetWidth *= ratio; 
+                        targetHeight *= ratio;
                     }
 
                     // 1. SAFE AUTO-CROP
                     let cropX = 0, cropY = 0, cropW = targetWidth, cropH = targetHeight;
+                    
                     if (applyAutoCrop) {
-                        const thumbW = 100; const thumbH = Math.floor(100 * (img.height/img.width));
-                        const tCanvas = document.createElement('canvas'); tCanvas.width = thumbW; tCanvas.height = thumbH;
-                        const tCtx = tCanvas.getContext('2d', { willReadFrequently: true }); tCtx.drawImage(img, 0, 0, thumbW, thumbH);
+                        const thumbW = 100; 
+                        const thumbH = Math.floor(100 * (img.height/img.width));
+                        const tCanvas = document.createElement('canvas'); 
+                        tCanvas.width = thumbW; 
+                        tCanvas.height = thumbH;
+                        
+                        const tCtx = tCanvas.getContext('2d', { willReadFrequently: true }); 
+                        tCtx.drawImage(img, 0, 0, thumbW, thumbH);
                         const tData = tCtx.getImageData(0, 0, thumbW, thumbH).data;
+                        
                         let top = 0, bottom = thumbH-1, left = 0, right = thumbW-1;
                         
                         const isBorderDark = (isRow, idx) => {
                             let darks = 0, total = 0;
-                            if(isRow) { for(let x=left; x<=right; x++){ let i=(idx*thumbW+x)*4; if((tData[i]+tData[i+1]+tData[i+2])/3 < 100) darks++; total++; } } 
-                            else { for(let y=top; y<=bottom; y++){ let i=(y*thumbW+idx)*4; if((tData[i]+tData[i+1]+tData[i+2])/3 < 100) darks++; total++; } }
+                            if(isRow) { 
+                                for(let x=left; x<=right; x++){ 
+                                    let i=(idx*thumbW+x)*4; 
+                                    if((tData[i]+tData[i+1]+tData[i+2])/3 < 100) darks++; 
+                                    total++; 
+                                } 
+                            } else { 
+                                for(let y=top; y<=bottom; y++){ 
+                                    let i=(y*thumbW+idx)*4; 
+                                    if((tData[i]+tData[i+1]+tData[i+2])/3 < 100) darks++; 
+                                    total++; 
+                                } 
+                            }
                             return (darks/total) > 0.7; 
                         };
 
@@ -505,26 +612,42 @@
                         while(left < thumbW*0.3 && isBorderDark(false, left)) left++;
                         while(right > thumbW*0.7 && isBorderDark(false, right)) right--;
                         
-                        top = Math.min(thumbH/2 - 5, top + 2); bottom = Math.max(thumbH/2 + 5, bottom - 2);
-                        left = Math.min(thumbW/2 - 5, left + 2); right = Math.max(thumbW/2 + 5, right - 2);
+                        top = Math.min(thumbH/2 - 5, top + 2); 
+                        bottom = Math.max(thumbH/2 + 5, bottom - 2);
+                        left = Math.min(thumbW/2 - 5, left + 2); 
+                        right = Math.max(thumbW/2 + 5, right - 2);
 
-                        if(top >= bottom || left >= right) { top=0; bottom=thumbH-1; left=0; right=thumbW-1; }
-                        cropX = (left / thumbW) * targetWidth; cropY = (top / thumbH) * targetHeight;
-                        cropW = ((right - left) / thumbW) * targetWidth; cropH = ((bottom - top) / thumbH) * targetHeight;
+                        if(top >= bottom || left >= right) { 
+                            top=0; bottom=thumbH-1; left=0; right=thumbW-1; 
+                        }
+                        
+                        cropX = (left / thumbW) * targetWidth; 
+                        cropY = (top / thumbH) * targetHeight;
+                        cropW = ((right - left) / thumbW) * targetWidth; 
+                        cropH = ((bottom - top) / thumbH) * targetHeight;
                     }
 
                     // 2. MAIN RENDERING 
                     const canvas = document.createElement('canvas');
-                    canvas.width = cropW; canvas.height = cropH;
+                    canvas.width = cropW; 
+                    canvas.height = cropH;
                     const ctx = canvas.getContext('2d', { willReadFrequently: true });
-                    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+                    
+                    ctx.fillStyle = '#ffffff'; 
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.imageSmoothingEnabled = true; 
+                    ctx.imageSmoothingQuality = 'high';
 
                     // INITIAL CSS FILTERS 
-                    if (filterType === 'magic-pro') ctx.filter = 'contrast(1.3) brightness(1.1) saturate(1.3)';
-                    else if (filterType === 'print-pro') ctx.filter = 'contrast(1.4) brightness(1.1) saturate(1.3)';
-                    else if (filterType === 'clear-pro') ctx.filter = 'contrast(1.4) brightness(1.2) grayscale(100%)';
-                    else if (filterType === 'super-bw') ctx.filter = 'contrast(1.8) brightness(1.2) grayscale(100%)';
+                    if (filterType === 'magic-pro') {
+                        ctx.filter = 'contrast(1.3) brightness(1.1) saturate(1.3)';
+                    } else if (filterType === 'print-pro') {
+                        ctx.filter = 'contrast(1.4) brightness(1.1) saturate(1.3)';
+                    } else if (filterType === 'clear-pro') {
+                        ctx.filter = 'contrast(1.4) brightness(1.2) grayscale(100%)';
+                    } else if (filterType === 'super-bw') {
+                        ctx.filter = 'contrast(1.8) brightness(1.2) grayscale(100%)';
+                    }
                     
                     ctx.drawImage(img, cropX * (img.width/targetWidth), cropY * (img.height/targetHeight), cropW * (img.width/targetWidth), cropH * (img.height/targetHeight), 0, 0, cropW, cropH);
 
@@ -539,14 +662,11 @@
                             let diff = maxC - minC, avg = (r+g+b)/3;
 
                             if (filterType === 'magic-pro') {
-                                // WARM BRIGHT EYE CARE & CRISP TEXT (Soft threshold preserves anti-aliasing)
                                 if (avg > 150) { 
-                                    // Make bright parts pure white but with creamy/warm tint
-                                    data[i] = 255; // Red max
-                                    data[i+1] = Math.min(255, g + 50); // Green up
-                                    data[i+2] = Math.min(240, b + 20); // Blue slightly lower for warm yellow feel
+                                    data[i] = 255; 
+                                    data[i+1] = Math.min(255, g + 50); 
+                                    data[i+2] = Math.min(240, b + 20); 
                                 } else if (avg < 90) {
-                                    // Deepen text to make it look fresh
                                     data[i] = Math.max(0, r - 30);
                                     data[i+1] = Math.max(0, g - 30);
                                     data[i+2] = Math.max(0, b - 40);
@@ -570,19 +690,26 @@
                     let quality = (filterType === 'none') ? 0.98 : 0.95;
                     resolve(canvas.toDataURL('image/jpeg', quality));
                 };
+                
+                img.onerror = () => {
+                    console.error("Failed to load image for processing");
+                    resolve(dataUrl); // fallback to original if error occurs
+                }
+                
                 img.src = dataUrl;
             });
         }
 
         // ==========================================
-        // PDF GENERATION 
+        // PDF GENERATION LOGIC
         // ==========================================
         async function generatePDF() {
             if (imagesArray.length === 0) return;
             
             ui.loading.classList.replace('hidden', 'flex'); 
             document.getElementById('loadingTitle').innerText = "Creating Magic...";
-            ui.pBar.style.width = '0%'; ui.pTxtPercent.innerText = '0%';
+            ui.pBar.style.width = '0%'; 
+            ui.pTxtPercent.innerText = '0%';
             ui.pTxtItem.innerText = `0 / ${imagesArray.length}`;
 
             await new Promise(r => setTimeout(r, 150)); 
@@ -592,40 +719,71 @@
                 const filter = document.getElementById('imageFilter').value;
                 const cropSetting = document.getElementById('autoCrop').checked;
                 
-                let doc = null; const total = imagesArray.length; let thumb = null;
+                let doc = null; 
+                const total = imagesArray.length; 
+                let thumb = null;
 
                 for (let i = 0; i < total; i++) {
                     const enhancedDataUrl = await processDocumentImage(imagesArray[i].dataUrl, filter, cropSetting);
                     if(i === 0) thumb = enhancedDataUrl;
 
-                    const img = new Image(); img.src = enhancedDataUrl;
-                    await new Promise(r => img.onload = r);
+                    const img = new Image(); 
+                    img.src = enhancedDataUrl;
+                    await new Promise((resolve) => {
+                        img.onload = resolve;
+                        img.onerror = resolve; // Continue even if one image fails slightly
+                    });
 
                     const isLandscape = img.width > img.height;
 
                     if (i === 0) {
-                        doc = new jsPDF({ orientation: isLandscape ? 'l' : 'p', unit: 'mm', format: [img.width * 0.264583, img.height * 0.264583], dpi: 300 });
+                        doc = new jsPDF({ 
+                            orientation: isLandscape ? 'l' : 'p', 
+                            unit: 'mm', 
+                            format: [img.width * 0.264583, img.height * 0.264583], 
+                            dpi: 300 
+                        });
                     } else {
                         doc.addPage([img.width * 0.264583, img.height * 0.264583], isLandscape ? 'l' : 'p');
                     }
+                    
                     doc.addImage(enhancedDataUrl, 'JPEG', 0, 0, img.width * 0.264583, img.height * 0.264583, undefined, 'FAST');
 
+                    // Small pause to free memory in WebView
                     await new Promise(r => setTimeout(r, 50));
                     
                     const pc = Math.round(((i + 1) / total) * 100);
-                    ui.pBar.style.width = `${pc}%`; ui.pTxtPercent.innerText = `${pc}%`; ui.pTxtItem.innerText = `${i + 1} / ${total}`;
+                    ui.pBar.style.width = `${pc}%`; 
+                    ui.pTxtPercent.innerText = `${pc}%`; 
+                    ui.pTxtItem.innerText = `${i + 1} / ${total}`;
                 }
 
+                // OUTPUT & DB SAVE
                 const base64Pdf = doc.output('datauristring');
                 const now = new Date();
                 const id = "doc_" + Date.now();
                 const name = `RasScan_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${now.getHours()}${now.getMinutes()}.pdf`;
 
-                const record = { id, name, date: now.toLocaleString(), pages: total, thumb, pdf: base64Pdf };
+                const record = { 
+                    id, 
+                    name, 
+                    date: now.toLocaleString(), 
+                    pages: total, 
+                    thumb, 
+                    pdf: base64Pdf 
+                };
                 
-                db.transaction(["pdfs"], "readwrite").objectStore("pdfs").put(record).oncomplete = () => {
+                // PROPER TRANSACTION LOGIC
+                const transaction = db.transaction(["pdfs"], "readwrite");
+                const store = transaction.objectStore("pdfs");
+                store.put(record);
+                
+                transaction.oncomplete = () => {
                     showToast('PDF Saved successfully!', 'success');
-                    imagesArray = []; renderImages(); updateUI(); loadHistoryFiles();
+                    imagesArray = []; 
+                    renderImages(); 
+                    updateUI(); 
+                    loadHistoryFiles();
                     
                     setTimeout(() => {
                         const fileEl = document.getElementById(`list_${id}`);
@@ -635,8 +793,18 @@
                         }
                     }, 400);
                 };
-            } catch (error) { showToast('Error generating PDF.', 'error'); } 
-            finally { setTimeout(() => ui.loading.classList.replace('flex', 'hidden'), 600); }
+
+                transaction.onerror = (err) => {
+                    console.error("DB Save Error:", err);
+                    showToast('Database error. File might be too large.', 'error');
+                };
+
+            } catch (error) { 
+                console.error("PDF Generation Error:", error);
+                showToast('Error generating PDF.', 'error'); 
+            } finally { 
+                setTimeout(() => ui.loading.classList.replace('flex', 'hidden'), 600); 
+            }
         }
 
         // ==========================================
@@ -644,7 +812,12 @@
         // ==========================================
         function loadHistoryFiles() {
             if(!db) return;
-            db.transaction(["pdfs"], "readonly").objectStore("pdfs").getAll().onsuccess = (e) => {
+            
+            const transaction = db.transaction(["pdfs"], "readonly");
+            const store = transaction.objectStore("pdfs");
+            const request = store.getAll();
+
+            request.onsuccess = (e) => {
                 const files = e.target.result.reverse();
                 ui.historyList.innerHTML = '';
 
@@ -652,13 +825,16 @@
                     ui.emptyHistory.classList.remove('hidden'); 
                 } else {
                     ui.emptyHistory.classList.add('hidden'); 
+                    
                     files.forEach(file => {
                         const el = document.createElement('div');
                         el.id = `list_${file.id}`;
                         el.className = 'bg-white p-5 rounded-3xl shadow-md border border-gray-100 flex flex-col gap-4 transition-all duration-300';
                         el.innerHTML = `
                             <div class="flex items-center gap-4 cursor-pointer" onclick="viewPDF('${file.id}')">
-                                <div class="w-16 h-18 bg-gray-100 rounded-xl overflow-hidden shrink-0 border border-gray-100 shadow-inner"><img src="${file.thumb}" class="w-full h-full object-cover"></div>
+                                <div class="w-16 h-18 bg-gray-100 rounded-xl overflow-hidden shrink-0 border border-gray-100 shadow-inner">
+                                    <img src="${file.thumb}" class="w-full h-full object-cover">
+                                </div>
                                 <div class="flex-1 min-w-0">
                                     <h4 class="font-bold text-gray-900 text-sm truncate" id="title_${file.id}">${file.name}</h4>
                                     <p class="text-xs text-gray-400 mt-1">${file.date}</p>
@@ -681,52 +857,85 @@
 
         function deletePDF(id) {
             if(confirm("Confirm to delete this PDF forever?")) {
-                db.transaction(["pdfs"], "readwrite").objectStore("pdfs").delete(id).oncomplete = () => { 
-                    loadHistoryFiles(); showToast('Document deleted.', 'info'); 
+                const tx = db.transaction(["pdfs"], "readwrite");
+                tx.objectStore("pdfs").delete(id);
+                
+                tx.oncomplete = () => { 
+                    loadHistoryFiles(); 
+                    showToast('Document deleted.', 'info'); 
                 };
+                
+                tx.onerror = () => {
+                    showToast('Failed to delete.', 'error');
+                }
             }
         }
 
         function renamePDF(id, currentName) {
             let baseName = currentName.toLowerCase().endsWith('.pdf') ? currentName.slice(0, -4) : currentName;
             let newName = prompt("Enter new filename:", baseName);
+            
             if(newName && newName.trim() !== "" && newName.trim() !== baseName) {
-                newName = newName.trim(); if(!newName.toLowerCase().endsWith('.pdf')) newName += '.pdf';
-                const store = db.transaction(["pdfs"], "readwrite").objectStore("pdfs");
+                newName = newName.trim(); 
+                if(!newName.toLowerCase().endsWith('.pdf')) newName += '.pdf';
+                
+                const tx = db.transaction(["pdfs"], "readwrite");
+                const store = tx.objectStore("pdfs");
+                
                 store.get(id).onsuccess = (e) => {
-                    const data = e.target.result; data.name = newName;
-                    store.put(data).onsuccess = () => { loadHistoryFiles(); showToast('Renamed!', 'success'); };
+                    const data = e.target.result; 
+                    data.name = newName;
+                    
+                    store.put(data).onsuccess = () => { 
+                        loadHistoryFiles(); 
+                        showToast('Renamed successfully!', 'success'); 
+                    };
                 };
             }
         }
 
         function sharePDF(id, filename) {
-            db.transaction(["pdfs"], "readonly").objectStore("pdfs").get(id).onsuccess = async (e) => {
+            const tx = db.transaction(["pdfs"], "readonly");
+            tx.objectStore("pdfs").get(id).onsuccess = async (e) => {
                 const file = e.target.result;
-                if(!file || !navigator.share) { showToast('Sharing not supported on this device.', 'error'); return; }
+                if(!file || !navigator.share) { 
+                    showToast('Sharing not supported on this device.', 'error'); 
+                    return; 
+                }
+                
                 try {
                     const ia = new Uint8Array(atob(file.pdf.split(',')[1]).split('').map(c=>c.charCodeAt(0)));
                     const fileObj = new File([ia], filename, { type: 'application/pdf' });
+                    
                     if (navigator.canShare && navigator.canShare({ files: [fileObj] })) {
                         await navigator.share({ files: [fileObj], title: filename });
                         showToast('Shared successfully!', 'success');
-                    } else showToast('File sharing failed.', 'error');
-                } catch (err) { if(err.name !== 'AbortError') showToast('Sharing error.', 'error'); }
+                    } else {
+                        showToast('File sharing failed.', 'error');
+                    }
+                } catch (err) { 
+                    if(err.name !== 'AbortError') showToast('Sharing error.', 'error'); 
+                }
             };
         }
 
         function saveToLocal(id) {
-            db.transaction(["pdfs"], "readonly").objectStore("pdfs").get(id).onsuccess = (e) => {
+            const tx = db.transaction(["pdfs"], "readonly");
+            tx.objectStore("pdfs").get(id).onsuccess = (e) => {
                 const file = e.target.result;
                 if(file) {
-                    const link = document.createElement('a'); link.href = file.pdf; link.download = file.name; 
-                    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                    const link = document.createElement('a'); 
+                    link.href = file.pdf; 
+                    link.download = file.name; 
+                    document.body.appendChild(link); 
+                    link.click(); 
+                    document.body.removeChild(link);
                 }
             };
         }
 
         // ==========================================
-        // NATIVE SCROLL PDF VIEWER & SMOOTH ZOOM
+        // PRO PDF VIEWER (NATIVE SCROLL & SMOOTH ZOOM)
         // ==========================================
         let pinchStartWidth = 100;
         let currentViewerZoom = 100;
@@ -734,9 +943,11 @@
         let initialPinchDist = 0;
 
         function viewPDF(id) {
-            db.transaction(["pdfs"], "readonly").objectStore("pdfs").get(id).onsuccess = (e) => {
+            const tx = db.transaction(["pdfs"], "readonly");
+            tx.objectStore("pdfs").get(id).onsuccess = (e) => {
                 const file = e.target.result;
                 if(!file) return;
+                
                 ui.pdfTitle.innerText = file.name;
                 ui.pdfPreview.classList.replace('hidden', 'flex');
                 ui.pdfPagesList.innerHTML = ''; 
@@ -756,7 +967,8 @@
                                 const vp = page.getViewport({scale: 1.5}); 
                                 const canvas = document.createElement('canvas');
                                 const ctx = canvas.getContext('2d');
-                                canvas.height = vp.height; canvas.width = vp.width;
+                                canvas.height = vp.height; 
+                                canvas.width = vp.width;
                                 canvas.className = 'pdf-canvas-page';
                                 canvas.style.width = '100%';
                                 ui.pdfPagesList.appendChild(canvas);
@@ -764,8 +976,12 @@
                             });
                         }
                         setupViewerInteractions(); 
-                    }).catch(err => { loading.innerText = 'Render failed.'; });
-                } catch (err) { loading.innerText = 'Failed to load PDF.'; }
+                    }).catch(err => { 
+                        loading.innerText = 'Render failed.'; 
+                    });
+                } catch (err) { 
+                    loading.innerText = 'Failed to load PDF.'; 
+                }
             };
         }
 
@@ -803,19 +1019,21 @@
                 pinchStartWidth = currentViewerZoom;
             }
         }
+        
         function handleTouchMove(e) {
             if (isPinching && e.touches.length === 2) {
-                e.preventDefault(); // Prevents native page zoom
+                e.preventDefault(); 
                 const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
                 const scale = dist / initialPinchDist;
                 let newWidth = pinchStartWidth * scale;
                 
-                currentViewerZoom = Math.min(Math.max(100, newWidth), 400); // Zoom 100% to 400%
+                currentViewerZoom = Math.min(Math.max(100, newWidth), 400); 
                 document.querySelectorAll('.pdf-canvas-page').forEach(c => {
                     c.style.width = `${currentViewerZoom}%`;
                 });
             }
         }
+        
         function handleTouchEnd(e) {
             if (e.touches.length < 2) isPinching = false;
         }
@@ -827,7 +1045,10 @@
             toast.className = `toast-enter flex items-center gap-3.5 px-5 py-4 rounded-2xl shadow-xl text-white text-sm font-bold bg-gray-900`;
             toast.innerHTML = `${icon}<span>${message}</span>`;
             container.appendChild(toast);
-            setTimeout(() => { toast.classList.replace('toast-enter', 'toast-exit'); setTimeout(()=>toast.remove(), 300); }, 3000);
+            setTimeout(() => { 
+                toast.classList.replace('toast-enter', 'toast-exit'); 
+                setTimeout(()=>toast.remove(), 300); 
+            }, 3000);
         }
     </script>
 </body>
